@@ -70,6 +70,7 @@ title: %q
 type: %q
 tags: %q
 created_at: %q
+updated_at:
 ---
 
 ## %q`, noteId, noteTitle, noteType, tags, createdAt, noteTitle)
