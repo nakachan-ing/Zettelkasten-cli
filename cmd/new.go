@@ -52,7 +52,7 @@ to quickly create a Cobra application.`,
 
 		config, err := internal.LoadConfig()
 		if err != nil {
-			fmt.Println("エラー:", err)
+			fmt.Println("Error:", err)
 			return
 		}
 
