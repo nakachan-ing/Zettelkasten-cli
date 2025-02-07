@@ -4,6 +4,7 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -14,6 +15,19 @@ import (
 )
 
 var noteType string
+
+var validTypes = map[string]bool{
+	"fleeting":   true,
+	"literature": true,
+	"permanent":  true,
+}
+
+func validateNoteType(noteType string) error {
+	if !validTypes[noteType] {
+		return errors.New("invalid note type: must be 'fleeting', 'literature', or 'permanent'")
+	}
+	return nil
+}
 
 // newCmd represents the new command
 var newCmd = &cobra.Command{
@@ -26,6 +40,11 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		if err := validateNoteType(noteType); err != nil {
+			fmt.Println(noteType)
+			fmt.Println("Error:", err)
+			os.Exit(1)
+		}
 		t := time.Now()
 		noteId := fmt.Sprintf("%d%02d%02d%02d%02d%02d",
 			t.Year(), t.Month(), t.Day(),
@@ -65,7 +84,7 @@ tags:
 func init() {
 	rootCmd.AddCommand(newCmd)
 
-	newCmd.Flags().StringVar(&noteType, "type", "No title", "Specify new note name")
+	newCmd.Flags().StringVar(&noteType, "type", "fleeting", "Specify new note name")
 
 	// Here you will define your flags and configuration settings.
 
