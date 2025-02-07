@@ -13,6 +13,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var noteType string
+
 // newCmd represents the new command
 var newCmd = &cobra.Command{
 	Use:   "new",
@@ -33,19 +35,20 @@ to quickly create a Cobra application.`,
 		frontMatter := fmt.Sprintf(`---
 id: %q
 title: %q
-type: 
+type: %q
 tags: 
 ---
 
-## %q`, noteId, title, title)
-
-		fmt.Println(frontMatter)
+## %q`, noteId, title, noteType, title)
 
 		newZettel := noteId + ".md"
 		err := os.WriteFile(newZettel, []byte(frontMatter), 0666)
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		fmt.Printf("Opening %q (Title: %q)...", newZettel, title)
+		time.Sleep(2 * time.Second)
 
 		c := exec.Command("vim", newZettel)
 		c.Stdin = os.Stdin
@@ -61,6 +64,8 @@ tags:
 
 func init() {
 	rootCmd.AddCommand(newCmd)
+
+	newCmd.Flags().StringVar(&noteType, "type", "No title", "Specify new note name")
 
 	// Here you will define your flags and configuration settings.
 
