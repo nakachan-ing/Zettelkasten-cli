@@ -5,6 +5,9 @@ package cmd
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"os/exec"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -37,6 +40,22 @@ tags:
 ## %q`, noteId, title, title)
 
 		fmt.Println(frontMatter)
+
+		newZettel := noteId + ".md"
+		err := os.WriteFile(newZettel, []byte(frontMatter), 0666)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		c := exec.Command("vim", newZettel)
+		c.Stdin = os.Stdin
+		c.Stdout = os.Stdout
+		c.Stderr = os.Stderr
+		err = c.Run()
+		if err != nil {
+			log.Fatal(err)
+		}
+
 	},
 }
 
