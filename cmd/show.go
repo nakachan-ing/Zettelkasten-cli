@@ -6,12 +6,23 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"regexp"
+	"strings"
 
+	"github.com/charmbracelet/glamour"
+	"github.com/fatih/color"
 	"github.com/nakachan-ing/Zettelkasten-cli/internal"
 	"github.com/spf13/cobra"
 )
 
 var noteId string
+
+func extractBody(content string) (string, error) {
+	re := regexp.MustCompile(`(?s)^---\n(.*?)\n---\n`)
+	body := re.ReplaceAllString(content, "") // フロントマター部分を削除
+	body = strings.TrimSpace(body)           // 余分な空白や改行を除去
+	return body, nil
+}
 
 // showCmd represents the show command
 var showCmd = &cobra.Command{
@@ -24,7 +35,6 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("show called")
 
 		config, err := internal.LoadConfig()
 		if err != nil {
@@ -42,7 +52,35 @@ to quickly create a Cobra application.`,
 
 		for _, file := range files {
 			if file.Name() == target {
-				fmt.Println("Found:", dir+"/"+file.Name())
+				zettelPath := dir + "/" + file.Name()
+
+				zettel, err := os.ReadFile(zettelPath)
+				if err != nil {
+					fmt.Println("Error:", err)
+				}
+
+				titleStyle := color.New(color.FgCyan, color.Bold).SprintFunc()
+				frontMatterStyle := color.New(color.FgHiGreen).SprintFunc()
+
+				frontMatter, err := internal.ParseFrontMatter(string(zettel))
+				if err != nil {
+					fmt.Println("Error:", err)
+					os.Exit(1)
+				}
+				body, err := extractBody(string(zettel))
+				if err != nil {
+					fmt.Println("Error:", err)
+				}
+
+				fmt.Printf("[%v] %v\n", titleStyle(frontMatter.ID), titleStyle(frontMatter.Title))
+				fmt.Println(strings.Repeat("-", 50))
+				fmt.Printf("type: %v\n", frontMatterStyle(frontMatter.Type))
+				fmt.Printf("tags: %v\n", frontMatterStyle(frontMatter.Tags))
+				fmt.Printf("created_at: %v\n", frontMatterStyle(frontMatter.CreatedAt))
+				fmt.Printf("updated_at: %v\n", frontMatterStyle(frontMatter.UpdatedAt))
+				renderedContent, _ := glamour.Render(body, "dark")
+				fmt.Println(renderedContent)
+				break
 			}
 		}
 	},

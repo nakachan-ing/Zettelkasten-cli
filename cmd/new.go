@@ -65,15 +65,15 @@ to quickly create a Cobra application.`,
 			t.Hour(), t.Minute(), t.Second())
 
 		frontMatter := fmt.Sprintf(`---
-id: %q
-title: %q
-type: %q
-tags: %q
-created_at: %q
+id: %v
+title: %v
+type: %v
+tags: %v
+created_at: %v
 updated_at:
 ---
 
-## %q`, noteId, noteTitle, noteType, tags, createdAt, noteTitle)
+## %v`, noteId, noteTitle, noteType, tags, createdAt, noteTitle)
 
 		newZettel := filepath.Join(config.NoteDirectory, noteId+".md")
 		err = os.WriteFile(newZettel, []byte(frontMatter), 0666)
