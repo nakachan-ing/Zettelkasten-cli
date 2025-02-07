@@ -15,6 +15,7 @@ import (
 )
 
 var noteType string
+var tags []string
 
 var validTypes = map[string]bool{
 	"fleeting":   true,
@@ -55,10 +56,10 @@ to quickly create a Cobra application.`,
 id: %q
 title: %q
 type: %q
-tags: 
+tags: %q
 ---
 
-## %q`, noteId, title, noteType, title)
+## %q`, noteId, title, noteType, tags, title)
 
 		newZettel := noteId + ".md"
 		err := os.WriteFile(newZettel, []byte(frontMatter), 0666)
@@ -67,6 +68,8 @@ tags:
 		}
 
 		fmt.Printf("Opening %q (Title: %q)...", newZettel, title)
+		fmt.Println(tags)
+
 		time.Sleep(2 * time.Second)
 
 		c := exec.Command("vim", newZettel)
@@ -85,6 +88,7 @@ func init() {
 	rootCmd.AddCommand(newCmd)
 
 	newCmd.Flags().StringVar(&noteType, "type", "fleeting", "Specify new note name")
+	newCmd.Flags().StringSliceVar(&tags, "tag", []string{}, "Specify tags")
 
 	// Here you will define your flags and configuration settings.
 
