@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var noteTitle string
 var noteType string
 var tags []string
 
@@ -50,16 +51,20 @@ to quickly create a Cobra application.`,
 		noteId := fmt.Sprintf("%d%02d%02d%02d%02d%02d",
 			t.Year(), t.Month(), t.Day(),
 			t.Hour(), t.Minute(), t.Second())
-		title := "Implement zk new command"
+		// title := "Implement zk new command"
+		createdAt := fmt.Sprintf("%d-%02d-%02d %02d:%02d:%02d",
+			t.Year(), t.Month(), t.Day(),
+			t.Hour(), t.Minute(), t.Second())
 
 		frontMatter := fmt.Sprintf(`---
 id: %q
 title: %q
 type: %q
 tags: %q
+created_at: %q
 ---
 
-## %q`, noteId, title, noteType, tags, title)
+## %q`, noteId, noteTitle, noteType, tags, createdAt, noteTitle)
 
 		newZettel := noteId + ".md"
 		err := os.WriteFile(newZettel, []byte(frontMatter), 0666)
@@ -67,8 +72,7 @@ tags: %q
 			log.Fatal(err)
 		}
 
-		fmt.Printf("Opening %q (Title: %q)...", newZettel, title)
-		fmt.Println(tags)
+		fmt.Printf("Opening %q (Title: %q)...\n", newZettel, noteTitle)
 
 		time.Sleep(2 * time.Second)
 
@@ -87,7 +91,8 @@ tags: %q
 func init() {
 	rootCmd.AddCommand(newCmd)
 
-	newCmd.Flags().StringVar(&noteType, "type", "fleeting", "Specify new note name")
+	newCmd.Flags().StringVar(&noteTitle, "title", "No title", "Specify new note title")
+	newCmd.Flags().StringVar(&noteType, "type", "fleeting", "Specify new note type")
 	newCmd.Flags().StringSliceVar(&tags, "tag", []string{}, "Specify tags")
 
 	// Here you will define your flags and configuration settings.
