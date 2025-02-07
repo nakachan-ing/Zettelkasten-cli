@@ -9,8 +9,10 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 
+	"github.com/nakachan-ing/Zettelkasten-cli/internal"
 	"github.com/spf13/cobra"
 )
 
@@ -47,6 +49,13 @@ to quickly create a Cobra application.`,
 			fmt.Println("Error:", err)
 			os.Exit(1)
 		}
+
+		config, err := internal.LoadConfig()
+		if err != nil {
+			fmt.Println("エラー:", err)
+			return
+		}
+
 		t := time.Now()
 		noteId := fmt.Sprintf("%d%02d%02d%02d%02d%02d",
 			t.Year(), t.Month(), t.Day(),
@@ -66,8 +75,8 @@ created_at: %q
 
 ## %q`, noteId, noteTitle, noteType, tags, createdAt, noteTitle)
 
-		newZettel := noteId + ".md"
-		err := os.WriteFile(newZettel, []byte(frontMatter), 0666)
+		newZettel := filepath.Join(config.NoteDirectory, noteId+".md")
+		err = os.WriteFile(newZettel, []byte(frontMatter), 0666)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -76,7 +85,7 @@ created_at: %q
 
 		time.Sleep(2 * time.Second)
 
-		c := exec.Command("vim", newZettel)
+		c := exec.Command(config.Editor, newZettel)
 		c.Stdin = os.Stdin
 		c.Stdout = os.Stdout
 		c.Stderr = os.Stderr
