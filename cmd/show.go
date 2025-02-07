@@ -16,6 +16,7 @@ import (
 )
 
 var noteId string
+var meta bool
 
 func extractBody(content string) (string, error) {
 	re := regexp.MustCompile(`(?s)^---\n(.*?)\n---\n`)
@@ -78,8 +79,12 @@ to quickly create a Cobra application.`,
 				fmt.Printf("tags: %v\n", frontMatterStyle(frontMatter.Tags))
 				fmt.Printf("created_at: %v\n", frontMatterStyle(frontMatter.CreatedAt))
 				fmt.Printf("updated_at: %v\n", frontMatterStyle(frontMatter.UpdatedAt))
-				renderedContent, _ := glamour.Render(body, "dark")
-				fmt.Println(renderedContent)
+				if !meta {
+					renderedContent, _ := glamour.Render(body, "dark")
+					fmt.Println(renderedContent)
+				} else {
+					fmt.Printf("\n")
+				}
 				break
 			}
 		}
@@ -91,7 +96,7 @@ func init() {
 
 	showCmd.Flags().StringVar(&noteId, "id", "", "Specify note id")
 	showCmd.MarkFlagRequired("id")
-
+	showCmd.Flags().BoolVar(&meta, "meta", false, "Optional")
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
