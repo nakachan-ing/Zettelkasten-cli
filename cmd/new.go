@@ -60,7 +60,6 @@ to quickly create a Cobra application.`,
 		noteId := fmt.Sprintf("%d%02d%02d%02d%02d%02d",
 			t.Year(), t.Month(), t.Day(),
 			t.Hour(), t.Minute(), t.Second())
-		// title := "Implement zk new command"
 		createdAt := fmt.Sprintf("%d-%02d-%02d %02d:%02d:%02d",
 			t.Year(), t.Month(), t.Day(),
 			t.Hour(), t.Minute(), t.Second())
@@ -104,13 +103,4 @@ func init() {
 	newCmd.Flags().StringVar(&noteType, "type", "fleeting", "Specify new note type")
 	newCmd.Flags().StringSliceVar(&tags, "tag", []string{}, "Specify tags")
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// newCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// newCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
