@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -37,22 +38,24 @@ to quickly create a Cobra application.`,
 
 		dir := config.NoteDirectory
 		target := editId + ".md"
+		lockFile := filepath.Join(dir, editId+".lock")
 		files, err := os.ReadDir(dir)
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
 		}
 
-		lockFile, err := os.Stat(dir + "/" + editId + ".lock")
-		if err == nil {
-			fmt.Printf("%q is already under editing.:", strings.Replace(lockFile.Name(), ".lock", ".md", 1))
+		if _, err := os.Stat(lockFile); err == nil {
+			base := filepath.Base(lockFile)
+			id := strings.TrimSuffix(base, filepath.Ext(base))
+			fmt.Printf("[%q.md] is already under editing.:", id)
 			os.Exit(1)
 		} else {
 			for _, file := range files {
 				if file.Name() == target {
-					zettelPath := dir + "/" + file.Name()
+					zettelPath := filepath.Join(dir, file.Name())
 
-					lockFile := (dir + "/" + editId + ".lock")
+					lockFile := filepath.Join(dir, editId+".lock")
 					internal.CreateLockFile(lockFile)
 
 					fmt.Printf("Found %v, and Opening...\n", file.Name())
