@@ -44,7 +44,10 @@ to quickly create a Cobra application.`,
 		}
 
 		lockFile, err := os.Stat(dir + "/" + editId + ".lock")
-		if err != nil {
+		if err == nil {
+			fmt.Printf("%q is already under editing.:", strings.Replace(lockFile.Name(), ".lock", ".md", 1))
+			os.Exit(1)
+		} else {
 			for _, file := range files {
 				if file.Name() == target {
 					zettelPath := dir + "/" + file.Name()
@@ -66,8 +69,6 @@ to quickly create a Cobra application.`,
 					break
 				}
 			}
-		} else {
-			fmt.Printf("%q is already under editing.:", strings.Replace(lockFile.Name(), ".lock", ".md", 1))
 		}
 
 	},

@@ -33,8 +33,6 @@ func CreateLockFile(lockFileName string) {
 
 	if user == "" {
 		fmt.Println("ユーザー名を取得できませんでした")
-	} else {
-		fmt.Printf("Current user: %s\n", user)
 	}
 
 	pid := os.Getpid()
