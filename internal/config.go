@@ -11,8 +11,9 @@ import (
 )
 
 type Config struct {
-	NoteDirectory string `yaml:"note_directory"`
-	Editor        string `yaml:"editor"`
+	NoteDirectory   string `yaml:"note_directory"`
+	Editor          string `yaml:"editor"`
+	BackupDirectory string `yaml:"backup_directory"`
 }
 
 func GetConfigPath() string {
@@ -75,6 +76,7 @@ func LoadConfig() (*Config, error) {
 
 	// `~` を展開
 	config.NoteDirectory = expandHomeDir(config.NoteDirectory)
+	config.BackupDirectory = expandHomeDir(config.BackupDirectory)
 
 	return &config, nil
 }
