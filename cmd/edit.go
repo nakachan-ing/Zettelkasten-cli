@@ -1,14 +1,20 @@
 /*
 Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"time"
 
+	"github.com/nakachan-ing/Zettelkasten-cli/internal"
 	"github.com/spf13/cobra"
 )
+
+var editId string
 
 // editCmd represents the edit command
 var editCmd = &cobra.Command{
@@ -21,12 +27,45 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("edit called")
+
+		config, err := internal.LoadConfig()
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
+		dir := config.NoteDirectory
+		target := editId + ".md"
+		files, err := os.ReadDir(dir)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
+		for _, file := range files {
+			if file.Name() == target {
+				zettelPath := dir + "/" + file.Name()
+				fmt.Printf("Found %v, and Opening...\n", file.Name())
+				time.Sleep(2 * time.Second)
+				c := exec.Command(config.Editor, zettelPath)
+				c.Stdin = os.Stdin
+				c.Stdout = os.Stdout
+				c.Stderr = os.Stderr
+				err = c.Run()
+				if err != nil {
+					log.Fatal(err)
+				}
+				break
+			}
+		}
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(editCmd)
+
+	editCmd.Flags().StringVar(&editId, "id", "", "Specify note id")
+	editCmd.MarkFlagRequired("id")
 
 	// Here you will define your flags and configuration settings.
 
