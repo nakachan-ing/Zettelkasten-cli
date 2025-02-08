@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/nakachan-ing/Zettelkasten-cli/internal"
@@ -42,22 +43,33 @@ to quickly create a Cobra application.`,
 			return
 		}
 
-		for _, file := range files {
-			if file.Name() == target {
-				zettelPath := dir + "/" + file.Name()
-				fmt.Printf("Found %v, and Opening...\n", file.Name())
-				time.Sleep(2 * time.Second)
-				c := exec.Command(config.Editor, zettelPath)
-				c.Stdin = os.Stdin
-				c.Stdout = os.Stdout
-				c.Stderr = os.Stderr
-				err = c.Run()
-				if err != nil {
-					log.Fatal(err)
+		lockFile, err := os.Stat(dir + "/" + editId + ".lock")
+		if err != nil {
+			for _, file := range files {
+				if file.Name() == target {
+					zettelPath := dir + "/" + file.Name()
+
+					lockFile := (dir + "/" + editId + ".lock")
+					internal.CreateLockFile(lockFile)
+
+					fmt.Printf("Found %v, and Opening...\n", file.Name())
+					time.Sleep(2 * time.Second)
+					c := exec.Command(config.Editor, zettelPath)
+					defer os.Remove(lockFile)
+					c.Stdin = os.Stdin
+					c.Stdout = os.Stdout
+					c.Stderr = os.Stderr
+					err = c.Run()
+					if err != nil {
+						log.Fatal(err)
+					}
+					break
 				}
-				break
 			}
+		} else {
+			fmt.Printf("%q is already under editing.:", strings.Replace(lockFile.Name(), ".lock", ".md", 1))
 		}
+
 	},
 }
 
