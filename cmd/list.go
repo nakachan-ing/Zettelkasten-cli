@@ -17,6 +17,7 @@ import (
 )
 
 var listTypes []string
+var noteTags []string
 
 // listCmd represents the list command
 var listCmd = &cobra.Command{
@@ -77,22 +78,47 @@ to quickly create a Cobra application.`,
 				}
 
 				// 実装途中
-				if len(listTypes) == 0 {
+				if len(listTypes) == 0 && len(tags) == 0 {
 					filteredNotes = append(filteredNotes, table.Row{
 						frontMatter.ID, frontMatter.Title, frontMatter.Type, frontMatter.Tags,
 						frontMatter.CreatedAt, frontMatter.UpdatedAt, "-", "-",
 					})
 				} else {
+					// --type フィルター
 					typeSet := make(map[string]bool)
 					for _, t := range listTypes {
 						typeSet[strings.ToLower(t)] = true
 					}
-					if typeSet[strings.ToLower(frontMatter.Type)] { // マップで検索
-						filteredNotes = append(filteredNotes, table.Row{
-							frontMatter.ID, frontMatter.Title, frontMatter.Type, frontMatter.Tags,
-							frontMatter.CreatedAt, frontMatter.UpdatedAt, "-", "-",
-						})
+
+					// --tag フィルター
+					tagSet := make(map[string]bool)
+					for _, tag := range tags {
+						tagSet[strings.ToLower(tag)] = true
 					}
+
+					// --type に指定があり、かつノートのタイプがマッチしないならスキップ
+					if len(typeSet) > 0 && !typeSet[strings.ToLower(frontMatter.Type)] {
+						continue
+					}
+					// --tag に指定があり、かつノートのタグが1つもマッチしないならスキップ
+					if len(tagSet) > 0 {
+						match := false
+						for _, noteTag := range frontMatter.Tags {
+							if tagSet[strings.ToLower(noteTag)] {
+								match = true
+								break
+							}
+						}
+						if !match {
+							continue
+						}
+					}
+
+					// フィルタを通過したノートを追加
+					filteredNotes = append(filteredNotes, table.Row{
+						frontMatter.ID, frontMatter.Title, frontMatter.Type, frontMatter.Tags,
+						frontMatter.CreatedAt, frontMatter.UpdatedAt, "-", "-",
+					})
 				}
 			}
 		}
@@ -105,6 +131,7 @@ func init() {
 	rootCmd.AddCommand(listCmd)
 
 	listCmd.Flags().StringSliceVar(&listTypes, "type", []string{}, "Specify note type")
+	listCmd.Flags().StringSliceVar(&tags, "tag", []string{}, "Specify tags")
 
 	// Here you will define your flags and configuration settings.
 
