@@ -71,7 +71,13 @@ to quickly create a Cobra application.`,
 				if err != nil {
 					fmt.Println("4Error:", err)
 				}
-				frontMatter, err := internal.ParseFrontMatter(string(zettel))
+				yamlContent, err := internal.ExtractFrontMatter(string(zettel))
+				if err != nil {
+					fmt.Println("Error extracting front matter:", err)
+					return
+				}
+
+				frontMatter, err := internal.ParseFrontMatter(yamlContent)
 				if err != nil {
 					fmt.Println("5Error:", err)
 					os.Exit(1)
