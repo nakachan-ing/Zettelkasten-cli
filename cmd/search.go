@@ -65,9 +65,11 @@ to quickly create a Cobra application.`,
 
 		// --title フラグがある場合、タイトルのみを検索
 		if searchTitle {
-			rgArgs = append(rgArgs, "-e", fmt.Sprintf("^title: .*%s", keyword))
-		} else {
-			rgArgs = append(rgArgs, "-e", keyword) // 通常の全文検索
+			if keyword != "" {
+				rgArgs = append(rgArgs, "-e", fmt.Sprintf("^title: .*%s", keyword))
+			} else {
+				rgArgs = append(rgArgs, "-e", "^title: ") // すべてのタイトルを検索
+			}
 		}
 
 		// --type フィルタリング（フロントマター内の `type:` を検索）
