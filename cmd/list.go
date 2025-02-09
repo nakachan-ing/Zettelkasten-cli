@@ -15,6 +15,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var listType string
+
 // listCmd represents the list command
 var listCmd = &cobra.Command{
 	Use:   "list",
@@ -57,7 +59,10 @@ to quickly create a Cobra application.`,
 
 		t.AppendHeader(table.Row{"ID", "Title", "Type", "Tags", "Created", "Updated", "Project", "Links"})
 
+		var filteredData []internal.FrontMatter
+
 		for _, file := range files {
+
 			if !file.IsDir() && pattern.MatchString(file.Name()) {
 				zettel, err := os.ReadFile(filepath.Join(dir, file.Name()))
 				if err != nil {
@@ -69,9 +74,22 @@ to quickly create a Cobra application.`,
 					os.Exit(1)
 				}
 
-				t.AppendRows([]table.Row{
-					{frontMatter.ID, frontMatter.Title, frontMatter.Type, frontMatter.Tags, frontMatter.CreatedAt, frontMatter.UpdatedAt, "-", "-"},
-				})
+				// 実装途中
+				if frontMatter.Type == listType {
+					filteredData = append(filteredData, *frontMatter)
+					// t.AppendRows([]table.Row{
+					// 	{frontMatter.ID, frontMatter.Title, frontMatter.Type, frontMatter.Tags, frontMatter.CreatedAt, frontMatter.UpdatedAt, "-", "-"},
+					// })
+				} else {
+					t.AppendRows([]table.Row{
+						{frontMatter.ID, frontMatter.Title, frontMatter.Type, frontMatter.Tags, frontMatter.CreatedAt, frontMatter.UpdatedAt, "-", "-"},
+					})
+
+				}
+
+				// t.AppendRows([]table.Row{
+				// 	{frontMatter.ID, frontMatter.Title, frontMatter.Type, frontMatter.Tags, frontMatter.CreatedAt, frontMatter.UpdatedAt, "-", "-"},
+				// })
 			}
 
 		}
@@ -81,6 +99,8 @@ to quickly create a Cobra application.`,
 
 func init() {
 	rootCmd.AddCommand(listCmd)
+
+	listCmd.Flags().StringVar(&listType, "type", "", "Specify note type")
 
 	// Here you will define your flags and configuration settings.
 
