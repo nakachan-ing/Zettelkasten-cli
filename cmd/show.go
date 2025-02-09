@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/glamour"
 	"github.com/fatih/color"
@@ -41,6 +42,13 @@ to quickly create a Cobra application.`,
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
+		}
+
+		retention := time.Duration(config.Backup.Retention) * 24 * time.Hour
+
+		err = internal.CleanupBackups(config.Backup.BackupDir, retention)
+		if err != nil {
+			fmt.Printf("Backup cleanup failed: %v\n", err)
 		}
 
 		dir := config.NoteDir
