@@ -71,11 +71,18 @@ to quickly create a Cobra application.`,
 				titleStyle := color.New(color.FgCyan, color.Bold).SprintFunc()
 				frontMatterStyle := color.New(color.FgHiGreen).SprintFunc()
 
-				frontMatter, err := internal.ParseFrontMatter(string(zettel))
+				yamlContent, err := internal.ExtractFrontMatter(string(zettel))
 				if err != nil {
-					fmt.Println("Error:", err)
+					fmt.Println("Error extracting front matter:", err)
+					return
+				}
+
+				frontMatter, err := internal.ParseFrontMatter(yamlContent)
+				if err != nil {
+					fmt.Println("5Error:", err)
 					os.Exit(1)
 				}
+
 				body, err := extractBody(string(zettel))
 				if err != nil {
 					fmt.Println("Error:", err)
