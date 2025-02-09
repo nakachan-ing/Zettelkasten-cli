@@ -75,7 +75,7 @@ updated_at:
 
 ## %v`, noteId, noteTitle, noteType, tags, createdAt, noteTitle)
 
-		newZettel := filepath.Join(config.NoteDirectory, noteId+".md")
+		newZettel := filepath.Join(config.NoteDir, noteId+".md")
 		err = os.WriteFile(newZettel, []byte(frontMatter), 0666)
 		if err != nil {
 			log.Fatal(err)

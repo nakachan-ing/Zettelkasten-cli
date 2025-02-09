@@ -11,9 +11,14 @@ import (
 )
 
 type Config struct {
-	NoteDirectory   string `yaml:"note_directory"`
-	Editor          string `yaml:"editor"`
-	BackupDirectory string `yaml:"backup_directory"`
+	NoteDir string `yaml:"note_dir"`
+	Editor  string `yaml:"editor"`
+	Backup  struct {
+		Enable    bool   `yaml:"enable"`
+		Frequency int    `yaml:"frequency"`
+		Retention int    `yaml:"retention"`
+		BackupDir string `yaml:"backup_dir"`
+	}
 }
 
 func GetConfigPath() string {
@@ -75,8 +80,8 @@ func LoadConfig() (*Config, error) {
 	}
 
 	// `~` を展開
-	config.NoteDirectory = expandHomeDir(config.NoteDirectory)
-	config.BackupDirectory = expandHomeDir(config.BackupDirectory)
+	config.NoteDir = expandHomeDir(config.NoteDir)
+	config.Backup.BackupDir = expandHomeDir(config.Backup.BackupDir)
 
 	return &config, nil
 }

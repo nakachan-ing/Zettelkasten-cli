@@ -19,27 +19,21 @@ import (
 var editId string
 
 func backupNote(notePath string, backupDir string) error {
-	// 1. バックアップディレクトリの存在チェックと作成
 	if err := os.MkdirAll(backupDir, 0755); err != nil {
 		return err
 	}
-
-	// 2. 現在のタイムスタンプを取得
 	t := time.Now()
 
 	now := fmt.Sprintf("%d%02d%02dT%02d%02d%02d",
 		t.Year(), t.Month(), t.Day(),
 		t.Hour(), t.Minute(), t.Second())
 
-	// 3. ノートファイル名からIDを抽出（例としてファイル名がID.mdの場合）
 	base := filepath.Base(notePath)
 	id := strings.TrimSuffix(base, filepath.Ext(base))
 
-	// 4. バックアップファイル名を作成
 	backupFilename := fmt.Sprintf("%s_%s.md", id, now)
 	backupPath := filepath.Join(backupDir, backupFilename)
 
-	// 5. ノートファイルの内容をコピー
 	input, err := os.ReadFile(notePath)
 	if err != nil {
 		return err
@@ -68,7 +62,14 @@ to quickly create a Cobra application.`,
 			return
 		}
 
-		dir := config.NoteDirectory
+		retention := time.Duration(config.Backup.Retention) * 24 * time.Hour
+
+		err = internal.CleanupBackups(config.Backup.BackupDir, retention)
+		if err != nil {
+			fmt.Printf("Backup cleanup failed: %v\n", err)
+		}
+
+		dir := config.NoteDir
 		target := editId + ".md"
 		lockFile := filepath.Join(dir, editId+".lock")
 		files, err := os.ReadDir(dir)
@@ -89,7 +90,7 @@ to quickly create a Cobra application.`,
 
 					lockFile := filepath.Join(dir, editId+".lock")
 					internal.CreateLockFile(lockFile)
-					backupNote(zettelPath, config.BackupDirectory)
+					backupNote(zettelPath, config.Backup.BackupDir)
 					fmt.Printf("Found %v, and Opening...\n", file.Name())
 					time.Sleep(2 * time.Second)
 					c := exec.Command(config.Editor, zettelPath)

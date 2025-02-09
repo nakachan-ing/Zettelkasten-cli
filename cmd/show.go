@@ -43,7 +43,7 @@ to quickly create a Cobra application.`,
 			return
 		}
 
-		dir := config.NoteDirectory
+		dir := config.NoteDir
 		target := noteId + ".md"
 		files, err := os.ReadDir(dir)
 		if err != nil {
