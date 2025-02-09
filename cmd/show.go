@@ -16,7 +16,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var noteId string
+// var noteId string
 var meta bool
 
 func extractBody(content string) (string, error) {
@@ -37,7 +37,13 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-
+		var noteId string
+		if len(args) > 0 {
+			noteId = args[0]
+		} else {
+			fmt.Println("❌ IDを指定してください")
+			os.Exit(1)
+		}
 		config, err := internal.LoadConfig()
 		if err != nil {
 			fmt.Println("Error:", err)
@@ -109,7 +115,7 @@ to quickly create a Cobra application.`,
 func init() {
 	rootCmd.AddCommand(showCmd)
 
-	showCmd.Flags().StringVar(&noteId, "id", "", "Specify note id")
+	// showCmd.Flags().StringVar(&noteId, "id", "", "Specify note id")
 	showCmd.MarkFlagRequired("id")
 	showCmd.Flags().BoolVar(&meta, "meta", false, "Optional")
 	// Here you will define your flags and configuration settings.

@@ -101,32 +101,66 @@ func InteractiveSearch(results map[string][]string) {
 		return
 	}
 
+	// // fzf に渡すフォーマット
+	// var fzfInput strings.Builder
+
+	// // ファイルごとに `match` と `context` を整理
+	// for file, lines := range results {
+	// 	fzfInput.WriteString(fmt.Sprintf("📄 %s\n", file)) // ファイル名を追加
+	// 	for _, line := range lines {
+	// 		fzfInput.WriteString("   " + line + "\n") // インデントを追加
+	// 	}
+	// 	fzfInput.WriteString("\n") // ファイル間の区切り
+	// }
+
+	// // fzf に渡すデータが空なら実行しない
+	// if fzfInput.Len() == 0 {
+	// 	fmt.Println("🔹 fzf に渡すデータがありません")
+	// 	return
+	// }
+
+	// // `fzf` の `--preview` コマンド
+	// previewCmd := `file=$(echo {} | cut -d':' -f1); ` +
+	// 	`line=$(echo {} | cut -d':' -f2); ` +
+	// 	`[ -f "$file" ] && bat --style=plain --color=always --line-range $(($line - 5)):$((line + 5)) "$file"`
+
+	// // `fzf` の実行
+	// fzfCmd := exec.Command("fzf",
+	// 	"--delimiter", ":",
+	// 	"--preview", previewCmd,
+	// 	"--preview-window", "up:70%:wrap", // wrapを追加
+	// )
+	// fzfCmd.Stdin = strings.NewReader(fzfInput.String())
+	// fzfCmd.Stdout = os.Stdout
+	// fzfCmd.Stderr = os.Stderr
+
+	// err := fzfCmd.Run()
+	// if err != nil {
+	// 	if exitError, ok := err.(*exec.ExitError); ok && exitError.ExitCode() == 130 {
+	// 		fmt.Println("🔹 fzf がユーザーによって中断されました (Ctrl+C)")
+	// 		return
+	// 	}
+	// 	fmt.Println("❌ fzf の実行に失敗しました:", err)
+	// }
 	// fzf に渡すフォーマット
 	var fzfInput strings.Builder
 
 	// ファイルごとに `match` と `context` を整理
 	for file, lines := range results {
-		fzfInput.WriteString(fmt.Sprintf("📄 %s\n", file)) // ファイル名を追加
 		for _, line := range lines {
-			fzfInput.WriteString("   " + line + "\n") // インデントを追加
+			fzfInput.WriteString(fmt.Sprintf("%s:%s\n", file, line)) // `file:line` の形式に統一
 		}
-		fzfInput.WriteString("\n") // ファイル間の区切り
 	}
 
-	// fzf に渡すデータが空なら実行しない
-	if fzfInput.Len() == 0 {
-		fmt.Println("🔹 fzf に渡すデータがありません")
-		return
-	}
-
-	// `fzf` の `--preview` コマンド修正
-	previewCmd := `file=$(echo {} | cut -d':' -f1); line=$(echo {} | cut -d':' -f2); ` +
-		`[ -f "$file" ] && bat --style=plain --color=always --line-range $line:$((line+5)) "$file"`
+	// デバッグ用
+	// fmt.Println("🔍 fzf に渡すデータ:")
+	// fmt.Println(fzfInput.String())
 
 	// `fzf` の実行
 	fzfCmd := exec.Command("fzf",
 		"--delimiter", ":",
-		"--preview", previewCmd,
+		"--preview", `file=$(printf "%s" {} | awk -F ":" '{print $1}'); file=$(realpath "$file"); [ -f "$file" ] && bat --color=always --style=header,grid --line-range :100 "$file"`,
+		"--preview-window", "up:70%",
 	)
 	fzfCmd.Stdin = strings.NewReader(fzfInput.String())
 	fzfCmd.Stdout = os.Stdout
