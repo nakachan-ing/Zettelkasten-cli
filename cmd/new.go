@@ -56,6 +56,13 @@ to quickly create a Cobra application.`,
 			return
 		}
 
+		retention := time.Duration(config.Backup.Retention) * 24 * time.Hour
+
+		err = internal.CleanupBackups(config.Backup.BackupDir, retention)
+		if err != nil {
+			fmt.Printf("Backup cleanup failed: %v\n", err)
+		}
+
 		t := time.Now()
 		noteId := fmt.Sprintf("%d%02d%02d%02d%02d%02d",
 			t.Year(), t.Month(), t.Day(),
@@ -75,7 +82,7 @@ updated_at:
 
 ## %v`, noteId, noteTitle, noteType, tags, createdAt, noteTitle)
 
-		newZettel := filepath.Join(config.NoteDirectory, noteId+".md")
+		newZettel := filepath.Join(config.NoteDir, noteId+".md")
 		err = os.WriteFile(newZettel, []byte(frontMatter), 0666)
 		if err != nil {
 			log.Fatal(err)

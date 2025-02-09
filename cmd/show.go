@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/glamour"
 	"github.com/fatih/color"
@@ -43,7 +44,14 @@ to quickly create a Cobra application.`,
 			return
 		}
 
-		dir := config.NoteDirectory
+		retention := time.Duration(config.Backup.Retention) * 24 * time.Hour
+
+		err = internal.CleanupBackups(config.Backup.BackupDir, retention)
+		if err != nil {
+			fmt.Printf("Backup cleanup failed: %v\n", err)
+		}
+
+		dir := config.NoteDir
 		target := noteId + ".md"
 		files, err := os.ReadDir(dir)
 		if err != nil {
