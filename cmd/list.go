@@ -65,67 +65,64 @@ to quickly create a Cobra application.`,
 		filteredNotes := []table.Row{}
 
 		for _, file := range files {
-
 			if !file.IsDir() && pattern.MatchString(file.Name()) {
 				zettel, err := os.ReadFile(filepath.Join(dir, file.Name()))
 				if err != nil {
-					fmt.Println("4Error:", err)
+					fmt.Println("Error reading file:", err)
+					continue
 				}
 				yamlContent, err := internal.ExtractFrontMatter(string(zettel))
 				if err != nil {
 					fmt.Println("Error extracting front matter:", err)
-					return
+					continue
 				}
-
 				frontMatter, err := internal.ParseFrontMatter(yamlContent)
 				if err != nil {
-					fmt.Println("5Error:", err)
-					os.Exit(1)
+					fmt.Println("Error parsing front matter:", err)
+					continue
 				}
 
-				// 実装途中
-				if len(listTypes) == 0 && len(noteTags) == 0 {
-					filteredNotes = append(filteredNotes, table.Row{
-						frontMatter.ID, frontMatter.Title, frontMatter.Type, frontMatter.Tags,
-						frontMatter.CreatedAt, frontMatter.UpdatedAt, "-", "-",
-					})
-				} else {
-					// --type フィルター
-					typeSet := make(map[string]bool)
-					for _, t := range listTypes {
-						typeSet[strings.ToLower(t)] = true
-					}
+				// --type フィルター
+				typeSet := make(map[string]bool)
+				for _, t := range listTypes {
+					typeSet[strings.ToLower(t)] = true
+				}
 
-					// --tag フィルター
-					tagSet := make(map[string]bool)
-					for _, tag := range noteTags {
-						tagSet[strings.ToLower(tag)] = true
-					}
+				// --tag フィルター
+				tagSet := make(map[string]bool)
+				for _, tag := range noteTags {
+					tagSet[strings.ToLower(tag)] = true
+				}
 
-					// --type に指定があり、かつノートのタイプがマッチしないならスキップ
-					if len(typeSet) > 0 && !typeSet[strings.ToLower(frontMatter.Type)] {
-						continue
-					}
-					// --tag に指定があり、かつノートのタグが1つもマッチしないならスキップ
-					if len(tagSet) > 0 {
-						match := false
-						for _, noteTag := range frontMatter.Tags {
-							if tagSet[strings.ToLower(noteTag)] {
+				fmt.Printf("Debug: frontMatter.Tags = %+v\n", frontMatter.Tags)
+
+				// --type に指定があり、かつノートのタイプがマッチしないならスキップ
+				if len(typeSet) > 0 && !typeSet[strings.ToLower(frontMatter.Type)] {
+					continue
+				}
+
+				// --tag に指定があり、かつノートのタグが部分一致しないならスキップ
+				if len(tagSet) > 0 {
+					match := false
+					for _, noteTag := range frontMatter.Tags {
+						normalizedNoteTag := strings.ToLower(strings.TrimSpace(noteTag))
+						for filterTag := range tagSet {
+							if strings.Contains(normalizedNoteTag, filterTag) { // 部分一致
 								match = true
 								break
 							}
 						}
-						if !match {
-							continue
-						}
 					}
-
-					// フィルタを通過したノートを追加
-					filteredNotes = append(filteredNotes, table.Row{
-						frontMatter.ID, frontMatter.Title, frontMatter.Type, frontMatter.Tags,
-						frontMatter.CreatedAt, frontMatter.UpdatedAt, "-", "-",
-					})
+					if !match {
+						continue
+					}
 				}
+
+				// フィルタを通過したノートを追加
+				filteredNotes = append(filteredNotes, table.Row{
+					frontMatter.ID, frontMatter.Title, frontMatter.Type, frontMatter.Tags,
+					frontMatter.CreatedAt, frontMatter.UpdatedAt, "-", "-",
+				})
 			}
 		}
 		t.AppendRows(filteredNotes)
