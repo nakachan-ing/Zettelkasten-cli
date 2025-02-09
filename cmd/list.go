@@ -78,7 +78,7 @@ to quickly create a Cobra application.`,
 				}
 
 				// 実装途中
-				if len(listTypes) == 0 && len(tags) == 0 {
+				if len(listTypes) == 0 && len(noteTags) == 0 {
 					filteredNotes = append(filteredNotes, table.Row{
 						frontMatter.ID, frontMatter.Title, frontMatter.Type, frontMatter.Tags,
 						frontMatter.CreatedAt, frontMatter.UpdatedAt, "-", "-",
@@ -92,7 +92,7 @@ to quickly create a Cobra application.`,
 
 					// --tag フィルター
 					tagSet := make(map[string]bool)
-					for _, tag := range tags {
+					for _, tag := range noteTags {
 						tagSet[strings.ToLower(tag)] = true
 					}
 
@@ -131,7 +131,7 @@ func init() {
 	rootCmd.AddCommand(listCmd)
 
 	listCmd.Flags().StringSliceVar(&listTypes, "type", []string{}, "Specify note type")
-	listCmd.Flags().StringSliceVar(&tags, "tag", []string{}, "Specify tags")
+	listCmd.Flags().StringSliceVar(&noteTags, "tag", []string{}, "Specify tags")
 
 	// Here you will define your flags and configuration settings.
 
