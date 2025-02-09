@@ -6,6 +6,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 	"time"
 
@@ -44,12 +45,23 @@ to quickly create a Cobra application.`,
 			fmt.Printf("Backup cleanup failed: %v\n", err)
 		}
 
-		keyword := args[0]
+		var keyword string
+		if len(args) > 0 {
+			keyword = args[0]
+		} else {
+			keyword = "" // 検索ワードがない場合でも動作するようにする
+		}
 		var rgArgs []string
 		// ripgrep の基本オプション
 		rgArgs = append(rgArgs, "--json")
-		rgArgs = append(rgArgs, "--ignore-case")                        // 大文字・小文字を無視
+		rgArgs = append(rgArgs, "--ignore-case") // 大文字・小文字を無視
+		rgArgs = append(rgArgs, "--only-matching")
 		rgArgs = append(rgArgs, "-C", fmt.Sprintf("%d", searchContext)) // --context の指定
+
+		if keyword == "" && !searchTitle && len(searchTags) == 0 {
+			fmt.Println("❌ 検索ワード、タイトル、またはタグを指定してください")
+			os.Exit(1)
+		}
 
 		// --title フラグがある場合、タイトルのみを検索
 		if searchTitle {
@@ -58,18 +70,23 @@ to quickly create a Cobra application.`,
 			rgArgs = append(rgArgs, "-e", keyword) // 通常の全文検索
 		}
 
-		// --type フィルタリング（例: `--type reference` → `*.reference.md` を検索）
+		// --type フィルタリング（フロントマター内の `type:` を検索）
 		if len(searchTypes) > 0 {
 			for _, t := range searchTypes {
-				rgArgs = append(rgArgs, "--type", "md", "-g", fmt.Sprintf("*%s*", t))
+				rgArgs = append(rgArgs, "-e", fmt.Sprintf(`^type:\s*%s`, t))
 			}
 		}
 
 		// --tag フィルタリング（`tags:` に含まれるか検索）
 		if len(searchTags) > 0 {
 			for _, tag := range searchTags {
-				rgArgs = append(rgArgs, "-e", fmt.Sprintf("^tags: .*%s", tag))
+				rgArgs = append(rgArgs, "-e", fmt.Sprintf(`^tags:\s*\[.*\b%s\b.*\]`, tag))
 			}
+		}
+
+		// 通常の全文検索（`--title` や `--tag` が指定されていない場合のみ）
+		if keyword != "" && !searchTitle && len(searchTags) == 0 {
+			rgArgs = append(rgArgs, "-e", keyword)
 		}
 
 		// 検索ディレクトリを最後に追加
