@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -15,7 +16,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var listType string
+var listTypes []string
 
 // listCmd represents the list command
 var listCmd = &cobra.Command{
@@ -59,7 +60,8 @@ to quickly create a Cobra application.`,
 
 		t.AppendHeader(table.Row{"ID", "Title", "Type", "Tags", "Created", "Updated", "Project", "Links"})
 
-		var filteredData []internal.FrontMatter
+		// var filteredNotes []internal.FrontMatter
+		filteredNotes := []table.Row{}
 
 		for _, file := range files {
 
@@ -75,24 +77,26 @@ to quickly create a Cobra application.`,
 				}
 
 				// 実装途中
-				if frontMatter.Type == listType {
-					filteredData = append(filteredData, *frontMatter)
-					// t.AppendRows([]table.Row{
-					// 	{frontMatter.ID, frontMatter.Title, frontMatter.Type, frontMatter.Tags, frontMatter.CreatedAt, frontMatter.UpdatedAt, "-", "-"},
-					// })
-				} else {
-					t.AppendRows([]table.Row{
-						{frontMatter.ID, frontMatter.Title, frontMatter.Type, frontMatter.Tags, frontMatter.CreatedAt, frontMatter.UpdatedAt, "-", "-"},
+				if len(listTypes) == 0 {
+					filteredNotes = append(filteredNotes, table.Row{
+						frontMatter.ID, frontMatter.Title, frontMatter.Type, frontMatter.Tags,
+						frontMatter.CreatedAt, frontMatter.UpdatedAt, "-", "-",
 					})
-
+				} else {
+					typeSet := make(map[string]bool)
+					for _, t := range listTypes {
+						typeSet[strings.ToLower(t)] = true
+					}
+					if typeSet[strings.ToLower(frontMatter.Type)] { // マップで検索
+						filteredNotes = append(filteredNotes, table.Row{
+							frontMatter.ID, frontMatter.Title, frontMatter.Type, frontMatter.Tags,
+							frontMatter.CreatedAt, frontMatter.UpdatedAt, "-", "-",
+						})
+					}
 				}
-
-				// t.AppendRows([]table.Row{
-				// 	{frontMatter.ID, frontMatter.Title, frontMatter.Type, frontMatter.Tags, frontMatter.CreatedAt, frontMatter.UpdatedAt, "-", "-"},
-				// })
 			}
-
 		}
+		t.AppendRows(filteredNotes)
 		t.Render()
 	},
 }
@@ -100,7 +104,7 @@ to quickly create a Cobra application.`,
 func init() {
 	rootCmd.AddCommand(listCmd)
 
-	listCmd.Flags().StringVar(&listType, "type", "", "Specify note type")
+	listCmd.Flags().StringSliceVar(&listTypes, "type", []string{}, "Specify note type")
 
 	// Here you will define your flags and configuration settings.
 
