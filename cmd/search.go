@@ -58,34 +58,42 @@ to quickly create a Cobra application.`,
 		rgArgs = append(rgArgs, "--only-matching")
 		rgArgs = append(rgArgs, "-C", fmt.Sprintf("%d", searchContext)) // --context の指定
 
-		if keyword == "" && !searchTitle && len(searchTags) == 0 {
-			fmt.Println("❌ 検索ワード、タイトル、またはタグを指定してください")
+		// 検索条件が指定されていない場合、すべてのノートを対象にする
+		if keyword == "" && !searchTitle && len(searchTags) == 0 && len(searchTypes) == 0 && !interactive {
+			fmt.Println("❌ 検索ワード、タイトル、タグ、タイプ、または --interactive を指定してください")
 			os.Exit(1)
 		}
 
-		// --title フラグがある場合、タイトルのみを検索
-		if searchTitle {
-			rgArgs = append(rgArgs, "-e", fmt.Sprintf("^title: .*%s", keyword))
-		} else {
-			rgArgs = append(rgArgs, "-e", keyword) // 通常の全文検索
+		// --interactive のみ指定された場合、すべてのノートを対象にする
+		if interactive && keyword == "" && !searchTitle && len(searchTags) == 0 && len(searchTypes) == 0 {
+			rgArgs = append(rgArgs, "-e", ".*") // すべてのノートを対象に全文検索
 		}
 
-		// --type フィルタリング（フロントマター内の `type:` を検索）
+		// タイトル検索 (`--title`)
+		if searchTitle {
+			if keyword != "" {
+				rgArgs = append(rgArgs, "-e", fmt.Sprintf("^title:\\s*.*%s", keyword))
+			} else {
+				rgArgs = append(rgArgs, "-e", "^title:\\s*") // すべてのタイトルを検索
+			}
+		}
+
+		// ノートタイプ検索 (`--type`)
 		if len(searchTypes) > 0 {
 			for _, t := range searchTypes {
 				rgArgs = append(rgArgs, "-e", fmt.Sprintf(`^type:\s*%s`, t))
 			}
 		}
 
-		// --tag フィルタリング（`tags:` に含まれるか検索）
+		// タグ検索 (`--tag`)
 		if len(searchTags) > 0 {
 			for _, tag := range searchTags {
 				rgArgs = append(rgArgs, "-e", fmt.Sprintf(`^tags:\s*\[.*\b%s\b.*\]`, tag))
 			}
 		}
 
-		// 通常の全文検索（`--title` や `--tag` が指定されていない場合のみ）
-		if keyword != "" && !searchTitle && len(searchTags) == 0 {
+		// 通常の全文検索
+		if keyword != "" && !searchTitle && len(searchTags) == 0 && len(searchTypes) == 0 {
 			rgArgs = append(rgArgs, "-e", keyword)
 		}
 

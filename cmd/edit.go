@@ -4,6 +4,7 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -15,8 +16,6 @@ import (
 	"github.com/nakachan-ing/Zettelkasten-cli/internal"
 	"github.com/spf13/cobra"
 )
-
-var editId string
 
 func backupNote(notePath string, backupDir string) error {
 	if err := os.MkdirAll(backupDir, 0755); err != nil {
@@ -55,6 +54,13 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		var editId string
+		if len(args) > 0 {
+			editId = args[0]
+		} else {
+			fmt.Println("❌ IDを指定してください")
+			os.Exit(1)
+		}
 
 		config, err := internal.LoadConfig()
 		if err != nil {
@@ -70,13 +76,7 @@ to quickly create a Cobra application.`,
 		}
 
 		dir := config.NoteDir
-		target := editId + ".md"
 		lockFile := filepath.Join(dir, editId+".lock")
-		files, err := os.ReadDir(dir)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
 
 		if _, err := os.Stat(lockFile); err == nil {
 			base := filepath.Base(lockFile)
@@ -84,16 +84,22 @@ to quickly create a Cobra application.`,
 			fmt.Printf("[%q.md] is already under editing.:", id)
 			os.Exit(1)
 		} else {
-			for _, file := range files {
-				if file.Name() == target {
-					zettelPath := filepath.Join(dir, file.Name())
+
+			zettels, err := internal.LoadJson(*config)
+			if err != nil {
+				fmt.Println("Error:", err)
+			}
+
+			for i := range zettels {
+				if editId == zettels[i].ID {
+					// zettelPath := filepath.Join(dir, file.Name())
 
 					lockFile := filepath.Join(dir, editId+".lock")
 					internal.CreateLockFile(lockFile)
-					backupNote(zettelPath, config.Backup.BackupDir)
-					fmt.Printf("Found %v, and Opening...\n", file.Name())
+					backupNote(zettels[i].NotePath, config.Backup.BackupDir)
+					fmt.Printf("Found %v, and Opening...\n", zettels[i].NotePath)
 					time.Sleep(2 * time.Second)
-					c := exec.Command(config.Editor, zettelPath)
+					c := exec.Command(config.Editor, zettels[i].NotePath)
 					defer os.Remove(lockFile)
 					c.Stdin = os.Stdin
 					c.Stdout = os.Stdout
@@ -102,6 +108,46 @@ to quickly create a Cobra application.`,
 					if err != nil {
 						log.Fatal(err)
 					}
+					updatedContent, err := os.ReadFile(zettels[i].NotePath)
+					if err != nil {
+						fmt.Errorf("⚠️ マークダウンの読み込みエラー: %v", err)
+					}
+
+					yamlContent, err := internal.ExtractFrontMatter(string(updatedContent))
+					if err != nil {
+						fmt.Println("Error extracting front matter:", err)
+						return
+					}
+
+					frontMatter, err := internal.ParseFrontMatter(yamlContent)
+					if err != nil {
+						fmt.Println("5Error:", err)
+						os.Exit(1)
+					}
+
+					zettels[i].Title = frontMatter.Title
+					zettels[i].NoteType = frontMatter.Type
+					zettels[i].Tags = frontMatter.Tags
+					zettels[i].UpdatedAt = frontMatter.UpdatedAt
+
+					fmt.Println(zettels[i].Title)
+					fmt.Println(zettels[i].NoteType)
+					fmt.Println(zettels[i].Tags)
+					fmt.Println(zettels[i].UpdatedAt)
+
+					// JSON を更新
+					updatedJson, err := json.MarshalIndent(zettels, "", "  ")
+					if err != nil {
+						fmt.Errorf("⚠️ JSON の変換エラー: %v", err)
+					}
+
+					// `zettel.json` に書き込み
+					err = os.WriteFile(config.ZettelJson, updatedJson, 0644)
+					if err != nil {
+						fmt.Errorf("⚠️ JSON 書き込みエラー: %v", err)
+					}
+
+					fmt.Println("✅ JSON 更新完了:", config.ZettelJson)
 					break
 				}
 			}
@@ -113,8 +159,8 @@ to quickly create a Cobra application.`,
 func init() {
 	rootCmd.AddCommand(editCmd)
 
-	editCmd.Flags().StringVar(&editId, "id", "", "Specify note id")
-	editCmd.MarkFlagRequired("id")
+	// editCmd.Flags().StringVar(&editId, "id", "", "Specify note id")
+	// editCmd.MarkFlagRequired("id")
 
 	// Here you will define your flags and configuration settings.
 

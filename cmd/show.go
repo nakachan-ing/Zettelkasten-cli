@@ -16,7 +16,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var noteId string
+// var noteId string
 var meta bool
 
 func extractBody(content string) (string, error) {
@@ -37,7 +37,13 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-
+		var noteId string
+		if len(args) > 0 {
+			noteId = args[0]
+		} else {
+			fmt.Println("❌ IDを指定してください")
+			os.Exit(1)
+		}
 		config, err := internal.LoadConfig()
 		if err != nil {
 			fmt.Println("Error:", err)
@@ -51,19 +57,14 @@ to quickly create a Cobra application.`,
 			fmt.Printf("Backup cleanup failed: %v\n", err)
 		}
 
-		dir := config.NoteDir
-		target := noteId + ".md"
-		files, err := os.ReadDir(dir)
+		zettels, err := internal.LoadJson(*config)
 		if err != nil {
 			fmt.Println("Error:", err)
-			return
 		}
 
-		for _, file := range files {
-			if file.Name() == target {
-				zettelPath := dir + "/" + file.Name()
-
-				zettel, err := os.ReadFile(zettelPath)
+		for _, zettel := range zettels {
+			if noteId == zettel.ID {
+				note, err := os.ReadFile(zettel.NotePath)
 				if err != nil {
 					fmt.Println("Error:", err)
 				}
@@ -71,12 +72,19 @@ to quickly create a Cobra application.`,
 				titleStyle := color.New(color.FgCyan, color.Bold).SprintFunc()
 				frontMatterStyle := color.New(color.FgHiGreen).SprintFunc()
 
-				frontMatter, err := internal.ParseFrontMatter(string(zettel))
+				yamlContent, err := internal.ExtractFrontMatter(string(note))
 				if err != nil {
-					fmt.Println("Error:", err)
+					fmt.Println("Error extracting front matter:", err)
+					return
+				}
+
+				frontMatter, err := internal.ParseFrontMatter(yamlContent)
+				if err != nil {
+					fmt.Println("5Error:", err)
 					os.Exit(1)
 				}
-				body, err := extractBody(string(zettel))
+
+				body, err := extractBody(string(note))
 				if err != nil {
 					fmt.Println("Error:", err)
 				}
@@ -95,6 +103,7 @@ to quickly create a Cobra application.`,
 				}
 				break
 			}
+
 		}
 	},
 }
@@ -102,8 +111,8 @@ to quickly create a Cobra application.`,
 func init() {
 	rootCmd.AddCommand(showCmd)
 
-	showCmd.Flags().StringVar(&noteId, "id", "", "Specify note id")
-	showCmd.MarkFlagRequired("id")
+	// showCmd.Flags().StringVar(&noteId, "id", "", "Specify note id")
+	// showCmd.MarkFlagRequired("id")
 	showCmd.Flags().BoolVar(&meta, "meta", false, "Optional")
 	// Here you will define your flags and configuration settings.
 

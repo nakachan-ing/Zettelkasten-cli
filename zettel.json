@@ -1,0 +1,26 @@
+[
+  {
+    "id": "1",
+    "note_id": "20250212014444",
+    "title": "this is a test1",
+    "note_type": "fleeting",
+    "tags": [
+      "zettelkasten"
+    ],
+    "created_at": "2025-02-12 01:44:44",
+    "updated_at": "",
+    "note_path": "/Users/nakadakyota/Library/Mobile Documents/com~apple~CloudDocs/Zettelkasten/20250212014444.md"
+  },
+  {
+    "id": "2",
+    "note_id": "20250212014459",
+    "title": "this is a test2",
+    "note_type": "fleeting",
+    "tags": [
+      "go"
+    ],
+    "created_at": "2025-02-12 01:44:59",
+    "updated_at": "2025-02-12 02:56:28",
+    "note_path": "/Users/nakadakyota/Library/Mobile Documents/com~apple~CloudDocs/Zettelkasten/20250212014459.md"
+  }
+]
