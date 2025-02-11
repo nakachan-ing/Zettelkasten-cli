@@ -43,49 +43,6 @@ func backupNote(notePath string, backupDir string) error {
 	return nil
 }
 
-func ExtractMetadata(content string) (string, []string, string) {
-	lines := strings.Split(content, "\n")
-	var title string
-	var tags []string
-	var noteType string
-
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "# ") {
-			title = strings.TrimPrefix(line, "# ")
-		} else if strings.HasPrefix(line, "tags:") {
-			tagLine := strings.TrimPrefix(line, "tags:")
-			tags = strings.Split(strings.TrimSpace(tagLine), ",")
-			for i := range tags {
-				tags[i] = strings.TrimSpace(tags[i]) // 空白除去
-			}
-		} else if strings.HasPrefix(line, "type:") {
-			noteType = strings.TrimPrefix(line, "type:")
-			noteType = strings.TrimSpace(noteType)
-		}
-	}
-
-	// タイトルが空ならデフォルト名を設定
-	if title == "" {
-		title = "Untitled Note"
-	}
-
-	// タイプが未指定なら "default" にする
-	if noteType == "" {
-		noteType = "fleeting"
-	}
-
-	return title, tags, noteType
-}
-
-func GetCurrentTimestamp() string {
-	t := time.Now()
-	updatedAt := fmt.Sprintf("%d-%02d-%02d %02d:%02d:%02d",
-		t.Year(), t.Month(), t.Day(),
-		t.Hour(), t.Minute(), t.Second())
-	return updatedAt
-}
-
 // editCmd represents the edit command
 var editCmd = &cobra.Command{
 	Use:   "edit",
