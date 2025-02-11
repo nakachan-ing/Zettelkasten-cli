@@ -57,19 +57,14 @@ to quickly create a Cobra application.`,
 			fmt.Printf("Backup cleanup failed: %v\n", err)
 		}
 
-		dir := config.NoteDir
-		target := noteId + ".md"
-		files, err := os.ReadDir(dir)
+		zettels, err := internal.LoadJson(*config)
 		if err != nil {
 			fmt.Println("Error:", err)
-			return
 		}
 
-		for _, file := range files {
-			if file.Name() == target {
-				zettelPath := dir + "/" + file.Name()
-
-				zettel, err := os.ReadFile(zettelPath)
+		for _, zettel := range zettels {
+			if noteId == zettel.ID {
+				note, err := os.ReadFile(zettel.NotePath)
 				if err != nil {
 					fmt.Println("Error:", err)
 				}
@@ -77,7 +72,7 @@ to quickly create a Cobra application.`,
 				titleStyle := color.New(color.FgCyan, color.Bold).SprintFunc()
 				frontMatterStyle := color.New(color.FgHiGreen).SprintFunc()
 
-				yamlContent, err := internal.ExtractFrontMatter(string(zettel))
+				yamlContent, err := internal.ExtractFrontMatter(string(note))
 				if err != nil {
 					fmt.Println("Error extracting front matter:", err)
 					return
@@ -89,7 +84,7 @@ to quickly create a Cobra application.`,
 					os.Exit(1)
 				}
 
-				body, err := extractBody(string(zettel))
+				body, err := extractBody(string(note))
 				if err != nil {
 					fmt.Println("Error:", err)
 				}
@@ -108,6 +103,7 @@ to quickly create a Cobra application.`,
 				}
 				break
 			}
+
 		}
 	},
 }

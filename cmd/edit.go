@@ -4,6 +4,7 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -42,6 +43,49 @@ func backupNote(notePath string, backupDir string) error {
 	return nil
 }
 
+func ExtractMetadata(content string) (string, []string, string) {
+	lines := strings.Split(content, "\n")
+	var title string
+	var tags []string
+	var noteType string
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "# ") {
+			title = strings.TrimPrefix(line, "# ")
+		} else if strings.HasPrefix(line, "tags:") {
+			tagLine := strings.TrimPrefix(line, "tags:")
+			tags = strings.Split(strings.TrimSpace(tagLine), ",")
+			for i := range tags {
+				tags[i] = strings.TrimSpace(tags[i]) // 空白除去
+			}
+		} else if strings.HasPrefix(line, "type:") {
+			noteType = strings.TrimPrefix(line, "type:")
+			noteType = strings.TrimSpace(noteType)
+		}
+	}
+
+	// タイトルが空ならデフォルト名を設定
+	if title == "" {
+		title = "Untitled Note"
+	}
+
+	// タイプが未指定なら "default" にする
+	if noteType == "" {
+		noteType = "fleeting"
+	}
+
+	return title, tags, noteType
+}
+
+func GetCurrentTimestamp() string {
+	t := time.Now()
+	updatedAt := fmt.Sprintf("%d-%02d-%02d %02d:%02d:%02d",
+		t.Year(), t.Month(), t.Day(),
+		t.Hour(), t.Minute(), t.Second())
+	return updatedAt
+}
+
 // editCmd represents the edit command
 var editCmd = &cobra.Command{
 	Use:   "edit",
@@ -75,13 +119,7 @@ to quickly create a Cobra application.`,
 		}
 
 		dir := config.NoteDir
-		target := editId + ".md"
 		lockFile := filepath.Join(dir, editId+".lock")
-		files, err := os.ReadDir(dir)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
 
 		if _, err := os.Stat(lockFile); err == nil {
 			base := filepath.Base(lockFile)
@@ -89,16 +127,22 @@ to quickly create a Cobra application.`,
 			fmt.Printf("[%q.md] is already under editing.:", id)
 			os.Exit(1)
 		} else {
-			for _, file := range files {
-				if file.Name() == target {
-					zettelPath := filepath.Join(dir, file.Name())
+
+			zettels, err := internal.LoadJson(*config)
+			if err != nil {
+				fmt.Println("Error:", err)
+			}
+
+			for i := range zettels {
+				if editId == zettels[i].ID {
+					// zettelPath := filepath.Join(dir, file.Name())
 
 					lockFile := filepath.Join(dir, editId+".lock")
 					internal.CreateLockFile(lockFile)
-					backupNote(zettelPath, config.Backup.BackupDir)
-					fmt.Printf("Found %v, and Opening...\n", file.Name())
+					backupNote(zettels[i].NotePath, config.Backup.BackupDir)
+					fmt.Printf("Found %v, and Opening...\n", zettels[i].NotePath)
 					time.Sleep(2 * time.Second)
-					c := exec.Command(config.Editor, zettelPath)
+					c := exec.Command(config.Editor, zettels[i].NotePath)
 					defer os.Remove(lockFile)
 					c.Stdin = os.Stdin
 					c.Stdout = os.Stdout
@@ -107,6 +151,46 @@ to quickly create a Cobra application.`,
 					if err != nil {
 						log.Fatal(err)
 					}
+					updatedContent, err := os.ReadFile(zettels[i].NotePath)
+					if err != nil {
+						fmt.Errorf("⚠️ マークダウンの読み込みエラー: %v", err)
+					}
+
+					yamlContent, err := internal.ExtractFrontMatter(string(updatedContent))
+					if err != nil {
+						fmt.Println("Error extracting front matter:", err)
+						return
+					}
+
+					frontMatter, err := internal.ParseFrontMatter(yamlContent)
+					if err != nil {
+						fmt.Println("5Error:", err)
+						os.Exit(1)
+					}
+
+					zettels[i].Title = frontMatter.Title
+					zettels[i].NoteType = frontMatter.Type
+					zettels[i].Tags = frontMatter.Tags
+					zettels[i].UpdatedAt = frontMatter.UpdatedAt
+
+					fmt.Println(zettels[i].Title)
+					fmt.Println(zettels[i].NoteType)
+					fmt.Println(zettels[i].Tags)
+					fmt.Println(zettels[i].UpdatedAt)
+
+					// JSON を更新
+					updatedJson, err := json.MarshalIndent(zettels, "", "  ")
+					if err != nil {
+						fmt.Errorf("⚠️ JSON の変換エラー: %v", err)
+					}
+
+					// `zettel.json` に書き込み
+					err = os.WriteFile(config.ZettelJson, updatedJson, 0644)
+					if err != nil {
+						fmt.Errorf("⚠️ JSON 書き込みエラー: %v", err)
+					}
+
+					fmt.Println("✅ JSON 更新完了:", config.ZettelJson)
 					break
 				}
 			}

@@ -6,8 +6,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -45,14 +43,10 @@ to quickly create a Cobra application.`,
 			fmt.Printf("2Backup cleanup failed: %v\n", err)
 		}
 
-		dir := config.NoteDir
-		files, err := os.ReadDir(dir)
 		if err != nil {
 			fmt.Println("3Error:", err)
 			return
 		}
-
-		pattern := regexp.MustCompile(`^\d{14}\.md$`)
 
 		t := table.NewWriter()
 		t.SetOutputMirror(os.Stdout)
@@ -61,72 +55,65 @@ to quickly create a Cobra application.`,
 
 		t.AppendHeader(table.Row{"ID", "Title", "Type", "Tags", "Created", "Updated", "Project", "Links"})
 
-		// var filteredNotes []internal.FrontMatter
 		filteredNotes := []table.Row{}
 
-		for _, file := range files {
-			if !file.IsDir() && pattern.MatchString(file.Name()) {
-				zettel, err := os.ReadFile(filepath.Join(dir, file.Name()))
-				if err != nil {
-					fmt.Println("Error reading file:", err)
-					continue
-				}
-				yamlContent, err := internal.ExtractFrontMatter(string(zettel))
-				if err != nil {
-					fmt.Println("Error extracting front matter:", err)
-					continue
-				}
-				frontMatter, err := internal.ParseFrontMatter(yamlContent)
-				if err != nil {
-					fmt.Println("Error parsing front matter:", err)
-					continue
-				}
+		zettels, err := internal.LoadJson(*config)
+		if err != nil {
+			fmt.Println("Error:", err)
+		}
 
-				// --type フィルター
-				typeSet := make(map[string]bool)
-				for _, listType := range listTypes {
-					typeSet[strings.ToLower(listType)] = true
-				}
+		fmt.Println(listTypes)
+		fmt.Println(noteTags)
 
-				// --tag フィルター
-				tagSet := make(map[string]bool)
-				for _, tag := range noteTags {
-					tagSet[strings.ToLower(tag)] = true
-				}
+		for _, zettel := range zettels {
 
-				fmt.Printf("Debug: frontMatter.Tags = %+v\n", frontMatter.Tags)
-				fmt.Printf("%v\n", typeSet)
-				fmt.Printf("%v\n", tagSet)
+			// --type フィルター
+			typeSet := make(map[string]bool)
+			for _, listType := range listTypes {
+				typeSet[strings.ToLower(listType)] = true
+			}
 
-				// --type に指定があり、かつノートのタイプがマッチしないならスキップ
-				if len(typeSet) > 0 && !typeSet[strings.ToLower(frontMatter.Type)] {
-					continue
-				}
+			// --tag フィルター
+			tagSet := make(map[string]bool)
+			for _, tag := range noteTags {
+				tagSet[strings.ToLower(tag)] = true
+			}
 
-				// --tag に指定があり、かつノートのタグが部分一致しないならスキップ
-				if len(tagSet) > 0 {
-					match := false
-					for _, noteTag := range frontMatter.Tags {
-						normalizedNoteTag := strings.ToLower(strings.TrimSpace(noteTag))
-						for filterTag := range tagSet {
-							if strings.Contains(normalizedNoteTag, filterTag) { // 部分一致
-								match = true
-								break
-							}
+			fmt.Printf("Debug: zettel.Tags = %+v\n", zettel.Tags)
+			fmt.Printf("Type Filter: %v\n", typeSet)
+			fmt.Printf("Tag Filter: %v\n", tagSet)
+
+			// --type に指定があり、かつノートのタイプがマッチしないならスキップ
+			if len(typeSet) > 0 && !typeSet[strings.ToLower(zettel.NoteType)] {
+				fmt.Println("Skipping due to type filter:", zettel.NoteType)
+				continue
+			}
+
+			// --tag フィルター処理
+			if len(tagSet) > 0 {
+				match := false
+				for _, noteTag := range zettel.Tags {
+					normalizedNoteTag := strings.ToLower(strings.TrimSpace(noteTag))
+					for filterTag := range tagSet {
+						if strings.Contains(normalizedNoteTag, filterTag) { // 部分一致
+							match = true
+							break
 						}
 					}
-					if !match {
-						continue
-					}
 				}
-
-				// フィルタを通過したノートを追加
-				filteredNotes = append(filteredNotes, table.Row{
-					frontMatter.ID, frontMatter.Title, frontMatter.Type, frontMatter.Tags,
-					frontMatter.CreatedAt, frontMatter.UpdatedAt, "-", "-",
-				})
+				if !match {
+					fmt.Println("Skipping due to tag filter")
+					continue
+				}
 			}
+
+			// 🔹 `--tag` がない場合でもここに到達するように修正
+			filteredNotes = append(filteredNotes, table.Row{
+				zettel.ID, zettel.Title, zettel.NoteType, zettel.Tags,
+				zettel.CreatedAt, zettel.UpdatedAt, "-", "-",
+			})
 		}
+
 		t.AppendRows(filteredNotes)
 		t.Render()
 	},

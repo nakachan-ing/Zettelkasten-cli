@@ -1,9 +1,11 @@
 package internal
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 )
 
@@ -33,5 +35,59 @@ func CleanupBackups(backupDir string, retentionPeriod time.Duration) error {
 			}
 		}
 	}
+	return nil
+}
+
+func LoadJson(config Config) ([]Zettel, error) {
+	var zettels []Zettel
+	if _, err := os.Stat(config.ZettelJson); err == nil {
+		jsonBytes, err := os.ReadFile(config.ZettelJson)
+		if err != nil {
+			return []Zettel{}, fmt.Errorf("⚠️ JSON 読み込みエラー1: %v", err)
+		}
+		if len(jsonBytes) > 0 {
+			err = json.Unmarshal(jsonBytes, &zettels)
+			if err != nil {
+				return []Zettel{}, fmt.Errorf("⚠️ JSON パースエラー: %v", err)
+			}
+		}
+	} else if !os.IsNotExist(err) {
+		// `Stat` がエラーになり、ファイルが存在しない場合以外のエラーをチェック
+		return []Zettel{}, fmt.Errorf("⚠️ JSON ファイル確認エラー: %v", err)
+	}
+	// デバッグ: 既存データの確認
+	fmt.Println("📝 既存のZettel一覧:", zettels)
+	return zettels, nil
+}
+
+func InsertZettelToJson(zettel Zettel, config Config) error {
+
+	zettels, err := LoadJson(config)
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
+	// 新しい ID を決定（最大の ID に +1 する）
+	newID := 1
+	if len(zettels) > 0 {
+		newID = (len(zettels) + 1)
+	}
+	zettel.ID = strconv.Itoa(newID)
+
+	zettels = append(zettels, zettel)
+	// デバッグ: 追加後のデータを確認
+	fmt.Println("✅ 追加後のZettel一覧:", zettels)
+
+	// JSON にシリアライズ（見やすく整形）
+	jsonBytes, err := json.MarshalIndent(zettels, "", "  ")
+	if err != nil {
+		return fmt.Errorf("⚠️ JSON 変換エラー: %v", err)
+	}
+	fmt.Printf("%T: %v", jsonBytes, jsonBytes)
+
+	err = os.WriteFile(config.ZettelJson, jsonBytes, 0644)
+	if err != nil {
+		return fmt.Errorf("⚠️ JSON 書き込みエラー: %v", err)
+	}
+	fmt.Println("🎉 JSON 書き込み成功!")
 	return nil
 }

@@ -68,6 +68,23 @@ func CreateNewNote(title, noteType string, tags []string, config internal.Config
 		return "", fmt.Errorf("⚠️ ファイル作成エラー: %v", err)
 	}
 
+	// JSONファイルに書き込み
+	zettel := internal.Zettel{
+		ID:        "",
+		NoteID:    fmt.Sprintf("%v", noteId),
+		NoteType:  noteType,
+		Title:     fmt.Sprintf("%v", title),
+		Tags:      tags,
+		CreatedAt: fmt.Sprintf("%v", createdAt),
+		UpdatedAt: "",
+		NotePath:  filePath,
+	}
+
+	err = internal.InsertZettelToJson(zettel, config)
+	if err != nil {
+		return "", fmt.Errorf("⚠️ JSON書き込みエラー: %v", err)
+	}
+
 	fmt.Printf("✅ ノート %s を作成しました。\n", filePath)
 	return filePath, nil
 

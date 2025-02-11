@@ -11,9 +11,10 @@ import (
 )
 
 type Config struct {
-	NoteDir string `yaml:"note_dir"`
-	Editor  string `yaml:"editor"`
-	Backup  struct {
+	NoteDir    string `yaml:"note_dir"`
+	Editor     string `yaml:"editor"`
+	ZettelJson string `yaml:"zettel_json"`
+	Backup     struct {
 		Enable    bool   `yaml:"enable"`
 		Frequency int    `yaml:"frequency"`
 		Retention int    `yaml:"retention"`
@@ -82,6 +83,7 @@ func LoadConfig() (*Config, error) {
 	// `~` を展開
 	config.NoteDir = expandHomeDir(config.NoteDir)
 	config.Backup.BackupDir = expandHomeDir(config.Backup.BackupDir)
+	config.ZettelJson = expandHomeDir(config.ZettelJson)
 
 	return &config, nil
 }
