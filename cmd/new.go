@@ -9,11 +9,11 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"time"
 
 	"github.com/nakachan-ing/Zettelkasten-cli/internal"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 // var noteTitle string
@@ -31,6 +31,46 @@ func validateNoteType(noteType string) error {
 		return errors.New("invalid note type: must be 'fleeting', 'literature', or 'permanent'")
 	}
 	return nil
+}
+
+func CreateNewNote(title, noteType string, tags []string, config internal.Config) (string, error) {
+	t := time.Now()
+	noteId := fmt.Sprintf("%d%02d%02d%02d%02d%02d",
+		t.Year(), t.Month(), t.Day(),
+		t.Hour(), t.Minute(), t.Second())
+	createdAt := fmt.Sprintf("%d-%02d-%02d %02d:%02d:%02d",
+		t.Year(), t.Month(), t.Day(),
+		t.Hour(), t.Minute(), t.Second())
+
+	// 統一フォーマットでフロントマターを作成
+	frontMatter := internal.FrontMatter{
+		ID:        fmt.Sprintf("%v", noteId),
+		Title:     fmt.Sprintf("%v", title),
+		Type:      noteType,
+		Tags:      tags,
+		CreatedAt: fmt.Sprintf("%v", createdAt),
+		UpdatedAt: "",
+	}
+
+	// YAML 形式に変換
+	frontMatterBytes, err := yaml.Marshal(frontMatter)
+	if err != nil {
+		return "", fmt.Errorf("⚠️ YAML 変換エラー: %v", err)
+	}
+
+	// Markdown ファイルの内容を作成
+	content := fmt.Sprintf("---\n%s---\n\n", string(frontMatterBytes))
+
+	// ファイルを作成
+	filePath := fmt.Sprintf("%s/%s.md", config.NoteDir, noteId)
+	err = os.WriteFile(filePath, []byte(content), 0644)
+	if err != nil {
+		return "", fmt.Errorf("⚠️ ファイル作成エラー: %v", err)
+	}
+
+	fmt.Printf("✅ ノート %s を作成しました。\n", filePath)
+	return filePath, nil
+
 }
 
 // newCmd represents the new command
@@ -71,27 +111,7 @@ to quickly create a Cobra application.`,
 			fmt.Printf("Backup cleanup failed: %v\n", err)
 		}
 
-		t := time.Now()
-		noteId := fmt.Sprintf("%d%02d%02d%02d%02d%02d",
-			t.Year(), t.Month(), t.Day(),
-			t.Hour(), t.Minute(), t.Second())
-		createdAt := fmt.Sprintf("%d-%02d-%02d %02d:%02d:%02d",
-			t.Year(), t.Month(), t.Day(),
-			t.Hour(), t.Minute(), t.Second())
-
-		frontMatter := fmt.Sprintf(`---
-id: %v
-title: %v
-type: %v
-tags: %v
-created_at: %v
-updated_at:
----
-
-## %v`, noteId, title, noteType, tags, createdAt, title)
-
-		newZettel := filepath.Join(config.NoteDir, noteId+".md")
-		err = os.WriteFile(newZettel, []byte(frontMatter), 0666)
+		newZettel, err := CreateNewNote(title, noteType, tags, *config)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -116,7 +136,7 @@ func init() {
 	rootCmd.AddCommand(newCmd)
 
 	// newCmd.Flags().StringVarP(&noteTitle, "title", "t", "No title", "Specify new note title")
-	newCmd.Flags().StringVar(&noteType, "type", "fleeting", "Specify new note type")
+	newCmd.Flags().StringVarP(&noteType, "type", "t", "fleeting", "Specify new note type")
 	newCmd.Flags().StringSliceVar(&tags, "tag", []string{}, "Specify tags")
 
 }

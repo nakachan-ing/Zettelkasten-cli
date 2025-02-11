@@ -116,7 +116,7 @@ func init() {
 	rootCmd.AddCommand(showCmd)
 
 	// showCmd.Flags().StringVar(&noteId, "id", "", "Specify note id")
-	showCmd.MarkFlagRequired("id")
+	// showCmd.MarkFlagRequired("id")
 	showCmd.Flags().BoolVar(&meta, "meta", false, "Optional")
 	// Here you will define your flags and configuration settings.
 

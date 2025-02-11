@@ -84,8 +84,8 @@ to quickly create a Cobra application.`,
 
 				// --type フィルター
 				typeSet := make(map[string]bool)
-				for _, t := range listTypes {
-					typeSet[strings.ToLower(t)] = true
+				for _, listType := range listTypes {
+					typeSet[strings.ToLower(listType)] = true
 				}
 
 				// --tag フィルター
@@ -95,6 +95,8 @@ to quickly create a Cobra application.`,
 				}
 
 				fmt.Printf("Debug: frontMatter.Tags = %+v\n", frontMatter.Tags)
+				fmt.Printf("%v\n", typeSet)
+				fmt.Printf("%v\n", tagSet)
 
 				// --type に指定があり、かつノートのタイプがマッチしないならスキップ
 				if len(typeSet) > 0 && !typeSet[strings.ToLower(frontMatter.Type)] {
@@ -133,7 +135,7 @@ to quickly create a Cobra application.`,
 func init() {
 	rootCmd.AddCommand(listCmd)
 
-	listCmd.Flags().StringSliceVar(&listTypes, "type", []string{}, "Specify note type")
+	listCmd.Flags().StringSliceVarP(&listTypes, "type", "t", []string{}, "Specify note type")
 	listCmd.Flags().StringSliceVar(&noteTags, "tag", []string{}, "Specify tags")
 
 	// Here you will define your flags and configuration settings.
