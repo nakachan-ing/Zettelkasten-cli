@@ -113,13 +113,7 @@ to quickly create a Cobra application.`,
 						fmt.Errorf("⚠️ マークダウンの読み込みエラー: %v", err)
 					}
 
-					yamlContent, err := internal.ExtractFrontMatter(string(updatedContent))
-					if err != nil {
-						fmt.Println("Error extracting front matter:", err)
-						return
-					}
-
-					frontMatter, err := internal.ParseFrontMatter(yamlContent)
+					frontMatter, _, err := internal.ParseFrontMatter(string(updatedContent))
 					if err != nil {
 						fmt.Println("5Error:", err)
 						os.Exit(1)
