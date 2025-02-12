@@ -59,7 +59,7 @@ func CreateNewNote(title, noteType string, tags []string, config internal.Config
 	}
 
 	// Markdown ファイルの内容を作成
-	content := fmt.Sprintf("---\n%s---\n\n", string(frontMatterBytes))
+	content := fmt.Sprintf("---\n%s---\n\n## %s", string(frontMatterBytes), frontMatter.Title)
 
 	// ファイルを作成
 	filePath := fmt.Sprintf("%s/%s.md", config.NoteDir, noteId)
