@@ -151,8 +151,6 @@ to quickly create a Cobra application.`,
 
 func init() {
 	rootCmd.AddCommand(newCmd)
-
-	// newCmd.Flags().StringVarP(&noteTitle, "title", "t", "No title", "Specify new note title")
 	newCmd.Flags().StringVarP(&noteType, "type", "t", "fleeting", "Specify new note type")
 	newCmd.Flags().StringSliceVar(&tags, "tag", []string{}, "Specify tags")
 

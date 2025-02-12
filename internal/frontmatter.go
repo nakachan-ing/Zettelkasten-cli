@@ -27,15 +27,6 @@ func ExtractFrontMatter(content string) (string, error) {
 	return matches[1], nil
 }
 
-// func ParseFrontMatter(yamlContent string) (*FrontMatter, error) {
-// 	var fm FrontMatter
-// 	err := yaml.Unmarshal([]byte(yamlContent), &fm)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return &fm, nil
-// }
-
 func ParseFrontMatter(content string) (FrontMatter, string, error) {
 	if !strings.HasPrefix(content, "---") {
 		return FrontMatter{}, content, fmt.Errorf("フロントマターが見つかりません")

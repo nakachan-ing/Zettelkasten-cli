@@ -92,8 +92,6 @@ to quickly create a Cobra application.`,
 
 			for i := range zettels {
 				if editId == zettels[i].ID {
-					// zettelPath := filepath.Join(dir, file.Name())
-
 					lockFile := filepath.Join(dir, editId+".lock")
 					internal.CreateLockFile(lockFile)
 					backupNote(zettels[i].NotePath, config.Backup.BackupDir)
@@ -152,17 +150,4 @@ to quickly create a Cobra application.`,
 
 func init() {
 	rootCmd.AddCommand(editCmd)
-
-	// editCmd.Flags().StringVar(&editId, "id", "", "Specify note id")
-	// editCmd.MarkFlagRequired("id")
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// editCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// editCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
