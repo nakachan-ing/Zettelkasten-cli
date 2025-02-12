@@ -55,8 +55,6 @@ func LoadJson(config Config) ([]Zettel, error) {
 		// `Stat` がエラーになり、ファイルが存在しない場合以外のエラーをチェック
 		return []Zettel{}, fmt.Errorf("⚠️ JSON ファイル確認エラー: %v", err)
 	}
-	// デバッグ: 既存データの確認
-	fmt.Println("📝 既存のZettel一覧:", zettels)
 	return zettels, nil
 }
 
@@ -74,15 +72,12 @@ func InsertZettelToJson(zettel Zettel, config Config) error {
 	zettel.ID = strconv.Itoa(newID)
 
 	zettels = append(zettels, zettel)
-	// デバッグ: 追加後のデータを確認
-	fmt.Println("✅ 追加後のZettel一覧:", zettels)
 
 	// JSON にシリアライズ（見やすく整形）
 	jsonBytes, err := json.MarshalIndent(zettels, "", "  ")
 	if err != nil {
 		return fmt.Errorf("⚠️ JSON 変換エラー: %v", err)
 	}
-	fmt.Printf("%T: %v", jsonBytes, jsonBytes)
 
 	err = os.WriteFile(config.ZettelJson, jsonBytes, 0644)
 	if err != nil {

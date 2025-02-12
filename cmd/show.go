@@ -72,27 +72,17 @@ to quickly create a Cobra application.`,
 				titleStyle := color.New(color.FgCyan, color.Bold).SprintFunc()
 				frontMatterStyle := color.New(color.FgHiGreen).SprintFunc()
 
-				yamlContent, err := internal.ExtractFrontMatter(string(note))
-				if err != nil {
-					fmt.Println("Error extracting front matter:", err)
-					return
-				}
-
-				frontMatter, err := internal.ParseFrontMatter(yamlContent)
+				frontMatter, body, err := internal.ParseFrontMatter(string(note))
 				if err != nil {
 					fmt.Println("5Error:", err)
 					os.Exit(1)
-				}
-
-				body, err := extractBody(string(note))
-				if err != nil {
-					fmt.Println("Error:", err)
 				}
 
 				fmt.Printf("[%v] %v\n", titleStyle(frontMatter.ID), titleStyle(frontMatter.Title))
 				fmt.Println(strings.Repeat("-", 50))
 				fmt.Printf("type: %v\n", frontMatterStyle(frontMatter.Type))
 				fmt.Printf("tags: %v\n", frontMatterStyle(frontMatter.Tags))
+				fmt.Printf("links: %v\n", frontMatterStyle(frontMatter.Links))
 				fmt.Printf("created_at: %v\n", frontMatterStyle(frontMatter.CreatedAt))
 				fmt.Printf("updated_at: %v\n", frontMatterStyle(frontMatter.UpdatedAt))
 				if !meta {
@@ -110,17 +100,5 @@ to quickly create a Cobra application.`,
 
 func init() {
 	rootCmd.AddCommand(showCmd)
-
-	// showCmd.Flags().StringVar(&noteId, "id", "", "Specify note id")
-	// showCmd.MarkFlagRequired("id")
 	showCmd.Flags().BoolVar(&meta, "meta", false, "Optional")
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// showCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// showCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
