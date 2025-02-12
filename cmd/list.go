@@ -18,7 +18,7 @@ import (
 var listTypes []string
 var noteTags []string
 
-const pageSize = 10
+const pageSize = 20
 
 // listCmd represents the list command
 var listCmd = &cobra.Command{
