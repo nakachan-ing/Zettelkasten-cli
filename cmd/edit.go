@@ -122,11 +122,6 @@ to quickly create a Cobra application.`,
 					zettels[i].Tags = frontMatter.Tags
 					zettels[i].UpdatedAt = frontMatter.UpdatedAt
 
-					fmt.Println(zettels[i].Title)
-					fmt.Println(zettels[i].NoteType)
-					fmt.Println(zettels[i].Tags)
-					fmt.Println(zettels[i].UpdatedAt)
-
 					// JSON を更新
 					updatedJson, err := json.MarshalIndent(zettels, "", "  ")
 					if err != nil {

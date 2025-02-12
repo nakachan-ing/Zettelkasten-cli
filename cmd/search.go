@@ -87,8 +87,9 @@ to quickly create a Cobra application.`,
 
 		// タグ検索 (`--tag`)
 		if len(searchTags) > 0 {
+			rgArgs = append(rgArgs, "--multiline", "--multiline-dotall") // ここを先に
 			for _, tag := range searchTags {
-				rgArgs = append(rgArgs, "-e", fmt.Sprintf(`^tags:\s*\[.*\b%s\b.*\]`, tag))
+				rgArgs = append(rgArgs, "-e", fmt.Sprintf(`^tags:.*%s`, tag))
 			}
 		}
 

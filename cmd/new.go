@@ -110,7 +110,7 @@ to quickly create a Cobra application.`,
 		}
 
 		if err := validateNoteType(noteType); err != nil {
-			fmt.Println(noteType)
+			// fmt.Println(noteType)
 			fmt.Println("Error:", err)
 			os.Exit(1)
 		}

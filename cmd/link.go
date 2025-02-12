@@ -16,11 +16,16 @@ import (
 var threshold float64
 
 // `links:` フィールドを更新する
-func AddLinkToFrontMatter(frontMatter *internal.FrontMatter, newLinks ...string) *internal.FrontMatter {
+func AddLinkToFrontMatter(frontMatter *internal.FrontMatter, newLinks []string) *internal.FrontMatter {
 	if frontMatter.Links == nil {
-		frontMatter.Links = newLinks
+		frontMatter.Links = []string{}
+		fmt.Println(frontMatter.Links)
 	} else {
-		frontMatter.Links = MergeUniqueLinks(frontMatter.Links, newLinks)
+		for _, newLink := range newLinks {
+			frontMatter.Links = append(frontMatter.Links, newLink)
+		}
+
+		fmt.Println(frontMatter.Links)
 	}
 	return frontMatter
 }
@@ -89,7 +94,7 @@ func UpdateMarkdownFile(note internal.Note, relatedIDs []string, config *interna
 		return
 	}
 
-	updatedFrontMatter := AddLinkToFrontMatter(&frontMatter, relatedIDs...)
+	updatedFrontMatter := AddLinkToFrontMatter(&frontMatter, relatedIDs)
 	updatedContent := internal.UpdateFrontMatter(updatedFrontMatter, body)
 
 	err = os.WriteFile(note.Content, []byte(updatedContent), 0644)
@@ -177,7 +182,7 @@ func AutoLinkNotes(fromID string, threshold float64, config internal.Config, zet
 	}
 
 	// ✅ リンクを追加
-	updatedFrontMatter := AddLinkToFrontMatter(&frontMatter, relatedIDs...)
+	updatedFrontMatter := AddLinkToFrontMatter(&frontMatter, relatedIDs)
 	updatedContent := internal.UpdateFrontMatter(updatedFrontMatter, body)
 
 	// ✅ ファイルに書き戻し
@@ -287,11 +292,13 @@ func runManualLink(sourceId, destinationId string) error {
 				frontMatter.Links = []string{}
 			}
 			for ii := range zettels {
+				destLinkIds := []string{}
 				if zettels[ii].ID == destinationId {
 					destLinkId := zettels[ii].NoteID
 					fmt.Println(destLinkId)
+					destLinkIds = append(destLinkIds, destLinkId)
 					// ✅ 既存の `Links` に `destinationId` を追加
-					updatedFrontMatter := AddLinkToFrontMatter(&frontMatter, destLinkId)
+					updatedFrontMatter := AddLinkToFrontMatter(&frontMatter, destLinkIds)
 
 					// ✅ フロントマターを更新した新しい Markdown コンテンツを作成
 					updatedContent := internal.UpdateFrontMatter(updatedFrontMatter, body)
@@ -301,6 +308,12 @@ func runManualLink(sourceId, destinationId string) error {
 					if err != nil {
 						return fmt.Errorf("❌ Markdown 書き込みエラー: %v", err)
 					}
+
+					// ✅ `zettels.json` の `Links` も更新
+					zettels[i].Links = MergeUniqueLinks(zettels[i].Links, []string{destLinkId})
+
+					// ✅ `zettels.json` を保存
+					SaveUpdatedJson(zettels, config)
 
 					fmt.Printf("✅ ノート %s に %s をリンクしました\n", sourceId, destinationId)
 					return nil

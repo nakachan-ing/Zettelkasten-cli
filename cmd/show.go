@@ -82,6 +82,7 @@ to quickly create a Cobra application.`,
 				fmt.Println(strings.Repeat("-", 50))
 				fmt.Printf("type: %v\n", frontMatterStyle(frontMatter.Type))
 				fmt.Printf("tags: %v\n", frontMatterStyle(frontMatter.Tags))
+				fmt.Printf("links: %v\n", frontMatterStyle(frontMatter.Links))
 				fmt.Printf("created_at: %v\n", frontMatterStyle(frontMatter.CreatedAt))
 				fmt.Printf("updated_at: %v\n", frontMatterStyle(frontMatter.UpdatedAt))
 				if !meta {

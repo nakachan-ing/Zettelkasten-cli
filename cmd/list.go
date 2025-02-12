@@ -4,6 +4,7 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"strings"
@@ -17,6 +18,8 @@ import (
 var listTypes []string
 var noteTags []string
 
+const pageSize = 10
+
 // listCmd represents the list command
 var listCmd = &cobra.Command{
 	Use:   "list",
@@ -28,7 +31,6 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("list called")
 
 		config, err := internal.LoadConfig()
 		if err != nil {
@@ -40,11 +42,11 @@ to quickly create a Cobra application.`,
 
 		err = internal.CleanupBackups(config.Backup.BackupDir, retention)
 		if err != nil {
-			fmt.Printf("2Backup cleanup failed: %v\n", err)
+			fmt.Printf("Backup cleanup failed: %v\n", err)
 		}
 
 		if err != nil {
-			fmt.Println("3Error:", err)
+			fmt.Println("Error:", err)
 			return
 		}
 
@@ -62,9 +64,6 @@ to quickly create a Cobra application.`,
 			fmt.Println("Error:", err)
 		}
 
-		fmt.Println(listTypes)
-		fmt.Println(noteTags)
-
 		for _, zettel := range zettels {
 
 			// --type フィルター
@@ -79,13 +78,8 @@ to quickly create a Cobra application.`,
 				tagSet[strings.ToLower(tag)] = true
 			}
 
-			fmt.Printf("Debug: zettel.Tags = %+v\n", zettel.Tags)
-			fmt.Printf("Type Filter: %v\n", typeSet)
-			fmt.Printf("Tag Filter: %v\n", tagSet)
-
 			// --type に指定があり、かつノートのタイプがマッチしないならスキップ
 			if len(typeSet) > 0 && !typeSet[strings.ToLower(zettel.NoteType)] {
-				fmt.Println("Skipping due to type filter:", zettel.NoteType)
 				continue
 			}
 
@@ -102,7 +96,6 @@ to quickly create a Cobra application.`,
 					}
 				}
 				if !match {
-					fmt.Println("Skipping due to tag filter")
 					continue
 				}
 			}
@@ -110,12 +103,59 @@ to quickly create a Cobra application.`,
 			// 🔹 `--tag` がない場合でもここに到達するように修正
 			filteredNotes = append(filteredNotes, table.Row{
 				zettel.ID, zettel.Title, zettel.NoteType, zettel.Tags,
-				zettel.CreatedAt, zettel.UpdatedAt, "-", "-",
+				zettel.CreatedAt, zettel.UpdatedAt, "-", len(zettel.Links),
 			})
 		}
+		// ページネーションの処理
+		if len(filteredNotes) == 0 {
+			fmt.Println("No matching notes found.")
+			return
+		}
 
-		t.AppendRows(filteredNotes)
-		t.Render()
+		reader := bufio.NewReader(os.Stdin)
+		page := 0
+
+		for {
+			// ページ範囲を決定
+			start := page * pageSize
+			end := start + pageSize
+			if end > len(filteredNotes) {
+				end = len(filteredNotes)
+			}
+
+			// テーブル作成
+			t := table.NewWriter()
+			t.SetOutputMirror(os.Stdout)
+			t.SetStyle(table.StyleRounded)
+			t.Style().Options.SeparateRows = false
+
+			t.AppendHeader(table.Row{"ID", "Title", "Type", "Tags", "Created", "Updated", "Project", "Links"})
+			t.AppendRows(filteredNotes[start:end])
+			t.Render()
+
+			// 最後のページなら終了
+			if end >= len(filteredNotes) {
+				break
+			}
+
+			// 次のページに進むか確認
+			fmt.Print("\nEnterで次のページ (q で終了): ")
+			input, _ := reader.ReadString('\n')
+			input = strings.TrimSpace(input)
+
+			if input == "q" {
+				break
+			}
+
+			page++
+		}
+		// reader := bufio.NewReader(os.Stdin)
+		// page := 0
+
+		// t.AppendRows(filteredNotes)
+
+		// t.Render()
+
 	},
 }
 
@@ -124,14 +164,4 @@ func init() {
 
 	listCmd.Flags().StringSliceVarP(&listTypes, "type", "t", []string{}, "Specify note type")
 	listCmd.Flags().StringSliceVar(&noteTags, "tag", []string{}, "Specify tags")
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// listCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// listCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
