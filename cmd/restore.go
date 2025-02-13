@@ -13,9 +13,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var fromTrash bool
-var fromArchive bool
-
 // `deleted:, archived:` フィールドを更新する
 func updateRestoredToFrontMatter(frontMatter *internal.FrontMatter, flag bool) *internal.FrontMatter {
 	if frontMatter.Deleted {
@@ -127,8 +124,6 @@ to quickly create a Cobra application.`,
 
 func init() {
 	rootCmd.AddCommand(restoreCmd)
-	restoreCmd.Flags().BoolVar(&trash, "trash", false, "Optional")
-	restoreCmd.Flags().BoolVar(&archive, "archive", false, "Optional")
 
 	// Here you will define your flags and configuration settings.
 
