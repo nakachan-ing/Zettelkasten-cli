@@ -14,6 +14,7 @@ type Config struct {
 	NoteDir    string `yaml:"note_dir"`
 	Editor     string `yaml:"editor"`
 	ZettelJson string `yaml:"zettel_json"`
+	ArchiveDir string `yaml:"archive_dir"`
 	Backup     struct {
 		Enable    bool   `yaml:"enable"`
 		Frequency int    `yaml:"frequency"`

@@ -69,6 +69,8 @@ to quickly create a Cobra application.`,
 		for i := range zettels {
 			if archiveId == zettels[i].ID {
 				flag := true
+				originalPath := zettels[i].NotePath
+				archivedPath := filepath.Join(config.ArchiveDir, zettels[i].NoteID+".md")
 				note, err := os.ReadFile(zettels[i].NotePath)
 				if err != nil {
 					fmt.Println("Error:", err)
@@ -94,9 +96,6 @@ to quickly create a Cobra application.`,
 					fmt.Println("Error:", err)
 					return
 				}
-
-				originalPath := zettels[i].NotePath
-				archivedPath := filepath.Join(config.Trash.TrashDir, zettels[i].NoteID+".md")
 
 				err = os.Rename(originalPath, archivedPath)
 				if err != nil {

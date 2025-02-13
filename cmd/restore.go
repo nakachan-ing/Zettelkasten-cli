@@ -13,18 +13,26 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// `deleted:` フィールドを更新する
-func updateDeletedToFrontMatter(frontMatter *internal.FrontMatter, flag bool) *internal.FrontMatter {
-	if !frontMatter.Deleted {
-		frontMatter.Deleted = true
-		fmt.Println(frontMatter.Deleted)
+var fromTrash bool
+var fromArchive bool
+
+// `deleted:, archived:` フィールドを更新する
+func updateRestoredToFrontMatter(frontMatter *internal.FrontMatter, flag bool) *internal.FrontMatter {
+	if frontMatter.Deleted {
+		frontMatter.Deleted = false
+		// fmt.Println(frontMatter.Deleted)
 	}
+	if frontMatter.Archived {
+		frontMatter.Archived = false
+		// fmt.Println(frontMatter.Archived)
+	}
+
 	return frontMatter
 }
 
-// deleteCmd represents the delete command
-var deleteCmd = &cobra.Command{
-	Use:   "delete",
+// restoreCmd represents the restore command
+var restoreCmd = &cobra.Command{
+	Use:   "restore",
 	Short: "A brief description of your command",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
@@ -33,10 +41,11 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		var deleteId string
+		fmt.Println("restore called")
 
+		var restoreId string
 		if len(args) > 0 {
-			deleteId = args[0]
+			restoreId = args[0]
 		} else {
 			fmt.Println("❌ IDを指定してください")
 			os.Exit(1)
@@ -67,10 +76,11 @@ to quickly create a Cobra application.`,
 		}
 
 		for i := range zettels {
-			if deleteId == zettels[i].ID {
-				flag := true
+			if restoreId == zettels[i].ID {
+				flag := false
 				originalPath := zettels[i].NotePath
-				deletedPath := filepath.Join(config.Trash.TrashDir, zettels[i].NoteID+".md")
+				restoredPath := filepath.Join(config.NoteDir, zettels[i].NoteID+".md")
+
 				note, err := os.ReadFile(zettels[i].NotePath)
 				if err != nil {
 					fmt.Println("Error:", err)
@@ -82,7 +92,7 @@ to quickly create a Cobra application.`,
 					os.Exit(1)
 				}
 
-				updatedFrontMatter := updateDeletedToFrontMatter(&frontMatter, flag)
+				updatedFrontMatter := updateRestoredToFrontMatter(&frontMatter, flag)
 				updatedContent := internal.UpdateFrontMatter(updatedFrontMatter, body)
 
 				// ✅ ファイルに書き戻し
@@ -97,14 +107,15 @@ to quickly create a Cobra application.`,
 					return
 				}
 
-				err = os.Rename(originalPath, deletedPath)
+				err = os.Rename(originalPath, restoredPath)
 				if err != nil {
 					fmt.Println("Error:", err)
 					return
 				}
 
-				zettels[i].NotePath = deletedPath
+				zettels[i].NotePath = restoredPath
 				zettels[i].Deleted = flag
+				zettels[i].Archived = flag
 				// ✅ `zettels.json` を保存
 				internal.SaveUpdatedJson(zettels, config)
 				break
@@ -115,15 +126,17 @@ to quickly create a Cobra application.`,
 }
 
 func init() {
-	rootCmd.AddCommand(deleteCmd)
+	rootCmd.AddCommand(restoreCmd)
+	restoreCmd.Flags().BoolVar(&trash, "trash", false, "Optional")
+	restoreCmd.Flags().BoolVar(&archive, "archive", false, "Optional")
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// deleteCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// restoreCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// deleteCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// restoreCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
