@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/nakachan-ing/Zettelkasten-cli/internal"
 	"github.com/spf13/cobra"
 )
@@ -21,13 +22,50 @@ func AddLinkToFrontMatter(frontMatter *internal.FrontMatter, newLinks []string) 
 		frontMatter.Links = []string{}
 		fmt.Println(frontMatter.Links)
 	} else {
-		for _, newLink := range newLinks {
-			frontMatter.Links = append(frontMatter.Links, newLink)
-		}
+		// for _, newLink := range newLinks {
+		// 	frontMatter.Links = append(frontMatter.Links, newLink)
+		// }
 
-		fmt.Println(frontMatter.Links)
+		// fmt.Println(frontMatter.Links)
+		for _, newLink := range newLinks {
+			// 重複チェック
+			exists := false
+			for _, existing := range frontMatter.Links {
+				if existing == newLink {
+					exists = true
+					break
+				}
+			}
+			if !exists {
+				frontMatter.Links = append(frontMatter.Links, newLink)
+			}
+		}
 	}
 	return frontMatter
+}
+
+// 🔍 **ユーザーに関連ノートを選択させる**
+func SelectRelatedNotes(relatedNotes []internal.Zettel) []string {
+	var selected []string
+	options := []string{}
+
+	for _, note := range relatedNotes {
+		options = append(options, fmt.Sprintf("%s: %s", note.ID, note.Title))
+	}
+
+	prompt := &survey.MultiSelect{
+		Message: "リンクするノートを選択してください:",
+		Options: options,
+	}
+
+	survey.AskOne(prompt, &selected, nil)
+
+	// 選択されたノートの ID を返す
+	var selectedIDs []string
+	for _, sel := range selected {
+		selectedIDs = append(selectedIDs, strings.Split(sel, ": ")[0])
+	}
+	return selectedIDs
 }
 
 // 📥 `zettel.json` からノートをロードし、TF-IDF を計算
@@ -154,16 +192,23 @@ func AutoLinkNotes(fromID string, threshold float64, config internal.Config, zet
 	}
 
 	// ✅ 関連ノートを検索（自分自身を除外）
-	relatedIDs := internal.FindRelatedNotes(*fromZettel, zettels, threshold, tfidfMap)
-	if len(relatedIDs) == 0 {
+	relatedNotes := internal.FindRelatedNotes(*fromZettel, zettels, threshold, tfidfMap)
+	if len(relatedNotes) == 0 {
 		fmt.Println("⚠️ 関連ノートが見つかりませんでした:", fileID)
+		return
+	}
+
+	// ✅ **ユーザーに関連ノートを選択させる**
+	selectedIDs := SelectRelatedNotes(relatedNotes)
+	if len(selectedIDs) == 0 {
+		fmt.Println("⚠️ 何も選択されませんでした。リンクは追加されません。")
 		return
 	}
 
 	// ✅ `zettels.json` の `Links` を更新
 	for i := range zettels {
 		if zettels[i].NoteID == fileID {
-			zettels[i].Links = MergeUniqueLinks(zettels[i].Links, relatedIDs)
+			zettels[i].Links = MergeUniqueLinks(zettels[i].Links, selectedIDs)
 			break
 		}
 	}
@@ -182,7 +227,7 @@ func AutoLinkNotes(fromID string, threshold float64, config internal.Config, zet
 	}
 
 	// ✅ リンクを追加
-	updatedFrontMatter := AddLinkToFrontMatter(&frontMatter, relatedIDs)
+	updatedFrontMatter := AddLinkToFrontMatter(&frontMatter, selectedIDs)
 	updatedContent := internal.UpdateFrontMatter(updatedFrontMatter, body)
 
 	// ✅ ファイルに書き戻し
