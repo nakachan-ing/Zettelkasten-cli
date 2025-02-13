@@ -49,7 +49,7 @@ func createNewNote(title, noteType string, tags []string, config internal.Config
 		Type:      noteType,
 		Tags:      tags,
 		CreatedAt: fmt.Sprintf("%v", createdAt),
-		UpdatedAt: "",
+		UpdatedAt: fmt.Sprintf("%v", createdAt),
 	}
 
 	// YAML 形式に変換
