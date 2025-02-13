@@ -363,7 +363,6 @@ func runManualLink(sourceId, destinationId string) error {
 
 	// ✅ **フロントマターを適用**
 	finalMarkdown := internal.UpdateFrontMatter(updatedFrontMatter, body)
-	fmt.Println(finalMarkdown)
 
 	// ✅ **Markdown を最終更新（書き込み処理）**
 	err = os.WriteFile(filePath, []byte(finalMarkdown), 0644)
