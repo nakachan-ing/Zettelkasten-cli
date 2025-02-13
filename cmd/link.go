@@ -195,7 +195,7 @@ func AutoLinkNotes(fromID string, threshold float64, config internal.Config, zet
 	// ✅ `zettels.json` を保存
 	SaveUpdatedJson(zettels, &config)
 
-	fmt.Printf("✅ 自動リンク完了: %s に関連ノートを追加しました\n", frontMatter.ID)
+	fmt.Printf("✅ 自動リンク完了: [%s]%s に関連ノートを追加しました\n", fromZettel.NoteID, fromZettel.Title)
 }
 
 // `existingLinks`（既存のリンク）と `newLinks`（追加するリンク）を統合し、重複を排除
@@ -315,7 +315,7 @@ func runManualLink(sourceId, destinationId string) error {
 					// ✅ `zettels.json` を保存
 					SaveUpdatedJson(zettels, config)
 
-					fmt.Printf("✅ ノート %s に %s をリンクしました\n", sourceId, destinationId)
+					fmt.Printf("✅ ノート [%s]%s に [%s]%s をリンクしました\n", zettels[i].NoteID, zettels[i].Title, zettels[ii].NoteID, zettels[ii].Title)
 					return nil
 				}
 			}
