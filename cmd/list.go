@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jedib0t/go-pretty/text"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/nakachan-ing/Zettelkasten-cli/internal"
 	"github.com/spf13/cobra"
@@ -51,13 +52,6 @@ to quickly create a Cobra application.`,
 			fmt.Println("Error:", err)
 			return
 		}
-
-		t := table.NewWriter()
-		t.SetOutputMirror(os.Stdout)
-		t.SetStyle(table.StyleRounded) // 罫線を柔らかいスタイルに
-		t.Style().Options.SeparateRows = false
-
-		t.AppendHeader(table.Row{"ID", "Title", "Type", "Tags", "Created", "Updated", "Project", "Links"})
 
 		filteredNotes := []table.Row{}
 
@@ -133,6 +127,9 @@ to quickly create a Cobra application.`,
 		reader := bufio.NewReader(os.Stdin)
 		page := 0
 
+		fmt.Println(strings.Repeat("=", 30))
+		fmt.Printf("Zettelkasten: %v notes shown\n", len(filteredNotes))
+		fmt.Println(strings.Repeat("=", 30))
 		for {
 			// ページ範囲を決定
 			start := page * pageSize
@@ -144,11 +141,37 @@ to quickly create a Cobra application.`,
 			// テーブル作成
 			t := table.NewWriter()
 			t.SetOutputMirror(os.Stdout)
-			t.SetStyle(table.StyleRounded)
+			// t.SetStyle(table.StyleRounded)
+			t.SetStyle(table.StyleDouble)
 			t.Style().Options.SeparateRows = false
+			// t.SetStyle(table.StyleColoredBlackOnCyanWhite)
 
-			t.AppendHeader(table.Row{"ID", "Title", "Type", "Tags", "Created", "Updated", "Project", "Links"})
-			t.AppendRows(filteredNotes[start:end])
+			t.AppendHeader(table.Row{
+				text.FgGreen.Sprintf("ID"), text.FgGreen.Sprintf(text.Bold.Sprintf("Title")),
+				text.FgGreen.Sprintf("Type"), text.FgGreen.Sprintf("Tags"),
+				text.FgGreen.Sprintf("Created"), text.FgGreen.Sprintf("Updated"),
+				text.FgGreen.Sprintf("Project"), text.FgGreen.Sprintf("Links"),
+			})
+			// データを追加（Type によって色を変更）
+			for _, row := range filteredNotes[start:end] {
+				noteType := row[2].(string) // Type 列の値
+				typeColored := noteType     // 初期値はそのまま
+
+				// Type の値に応じて色を変更
+				switch noteType {
+				case "permanent":
+					typeColored = text.FgHiBlue.Sprintf(noteType) // 明るい青
+				case "literature":
+					typeColored = text.FgHiYellow.Sprintf(noteType) // 明るい黄色
+				case "fleeting":
+					typeColored = noteType // 明るい赤
+				}
+
+				// 色付きの Type を適用して行を追加
+				t.AppendRow(table.Row{
+					row[0], row[1], typeColored, row[3], row[4], row[5], row[6], row[7],
+				})
+			}
 			t.Render()
 
 			// 最後のページなら終了

@@ -127,6 +127,8 @@ to quickly create a Cobra application.`,
 					zettels[i].Title = frontMatter.Title
 					zettels[i].NoteType = frontMatter.Type
 					zettels[i].Tags = frontMatter.Tags
+					zettels[i].Links = frontMatter.Links
+					zettels[i].TaskStatus = frontMatter.TaskStatus
 					zettels[i].UpdatedAt = frontMatter.UpdatedAt
 
 					// JSON を更新

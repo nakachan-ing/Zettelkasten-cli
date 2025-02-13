@@ -33,7 +33,7 @@ func validateNoteType(noteType string) error {
 	return nil
 }
 
-func createNewNote(title, noteType string, tags []string, config internal.Config) (string, error) {
+func createNewNote(title, noteType string, tags []string, config internal.Config) (string, internal.Zettel, error) {
 	t := time.Now()
 	noteId := fmt.Sprintf("%d%02d%02d%02d%02d%02d",
 		t.Year(), t.Month(), t.Day(),
@@ -55,7 +55,7 @@ func createNewNote(title, noteType string, tags []string, config internal.Config
 	// YAML 形式に変換
 	frontMatterBytes, err := yaml.Marshal(frontMatter)
 	if err != nil {
-		return "", fmt.Errorf("⚠️ YAML 変換エラー: %v", err)
+		return "", internal.Zettel{}, fmt.Errorf("⚠️ YAML 変換エラー: %v", err)
 	}
 
 	// Markdown ファイルの内容を作成
@@ -65,7 +65,7 @@ func createNewNote(title, noteType string, tags []string, config internal.Config
 	filePath := fmt.Sprintf("%s/%s.md", config.NoteDir, noteId)
 	err = os.WriteFile(filePath, []byte(content), 0644)
 	if err != nil {
-		return "", fmt.Errorf("⚠️ ファイル作成エラー: %v", err)
+		return "", internal.Zettel{}, fmt.Errorf("⚠️ ファイル作成エラー: %v", err)
 	}
 
 	// JSONファイルに書き込み
@@ -82,11 +82,11 @@ func createNewNote(title, noteType string, tags []string, config internal.Config
 
 	err = internal.InsertZettelToJson(zettel, config)
 	if err != nil {
-		return "", fmt.Errorf("⚠️ JSON書き込みエラー: %v", err)
+		return "", internal.Zettel{}, fmt.Errorf("⚠️ JSON書き込みエラー: %v", err)
 	}
 
 	fmt.Printf("✅ ノート %s を作成しました。\n", filePath)
-	return filePath, nil
+	return filePath, zettel, nil
 
 }
 
@@ -135,16 +135,17 @@ to quickly create a Cobra application.`,
 			fmt.Printf("Trash cleanup failed: %v\n", err)
 		}
 
-		newZettel, err := createNewNote(title, noteType, tags, *config)
+		newZettelStr, newZettelJson, err := createNewNote(title, noteType, tags, *config)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		fmt.Printf("Opening %q (Title: %q)...\n", newZettel, title)
+		fmt.Println(newZettelJson)
+		fmt.Printf("Opening %q (Title: %q)...\n", newZettelStr, title)
 
 		time.Sleep(2 * time.Second)
 
-		c := exec.Command(config.Editor, newZettel)
+		c := exec.Command(config.Editor, newZettelStr)
 		c.Stdin = os.Stdin
 		c.Stdout = os.Stdout
 		c.Stderr = os.Stderr
@@ -153,6 +154,37 @@ to quickly create a Cobra application.`,
 			log.Fatal(err)
 		}
 
+		// updatedContent, err := os.ReadFile(newZettelJson.NotePath)
+		// if err != nil {
+		// 	fmt.Errorf("⚠️ マークダウンの読み込みエラー: %v", err)
+		// }
+
+		// frontMatter, _, err := internal.ParseFrontMatter(string(updatedContent))
+		// if err != nil {
+		// 	fmt.Println("5Error:", err)
+		// 	os.Exit(1)
+		// }
+
+		// newZettelJson.Title = frontMatter.Title
+		// newZettelJson.NoteType = frontMatter.Type
+		// newZettelJson.Tags = frontMatter.Tags
+		// newZettelJson.Links = frontMatter.Links
+		// newZettelJson.TaskStatus = frontMatter.TaskStatus
+		// newZettelJson.UpdatedAt = frontMatter.UpdatedAt
+
+		// JSON を更新
+		// updatedJson, err := json.MarshalIndent(newZettelJson, "", "  ")
+		// if err != nil {
+		// 	fmt.Errorf("⚠️ JSON の変換エラー: %v", err)
+		// }
+
+		// // `zettel.json` に書き込み
+		// err = os.WriteFile(config.ZettelJson, updatedJson, 0644)
+		// if err != nil {
+		// 	fmt.Errorf("⚠️ JSON 書き込みエラー: %v", err)
+		// }
+
+		// fmt.Println("✅ JSON 更新完了:", config.ZettelJson)
 	},
 }
 
