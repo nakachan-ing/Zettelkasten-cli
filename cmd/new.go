@@ -33,7 +33,7 @@ func validateNoteType(noteType string) error {
 	return nil
 }
 
-func CreateNewNote(title, noteType string, tags []string, config internal.Config) (string, error) {
+func createNewNote(title, noteType string, tags []string, config internal.Config) (string, error) {
 	t := time.Now()
 	noteId := fmt.Sprintf("%d%02d%02d%02d%02d%02d",
 		t.Year(), t.Month(), t.Day(),
@@ -128,7 +128,14 @@ to quickly create a Cobra application.`,
 			fmt.Printf("Backup cleanup failed: %v\n", err)
 		}
 
-		newZettel, err := CreateNewNote(title, noteType, tags, *config)
+		retention = time.Duration(config.Trash.Retention) * 24 * time.Hour
+
+		err = internal.CleanupTrash(config.Trash.TrashDir, retention)
+		if err != nil {
+			fmt.Printf("Trash cleanup failed: %v\n", err)
+		}
+
+		newZettel, err := createNewNote(title, noteType, tags, *config)
 		if err != nil {
 			log.Fatal(err)
 		}

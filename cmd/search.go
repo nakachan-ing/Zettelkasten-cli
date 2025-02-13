@@ -45,6 +45,13 @@ to quickly create a Cobra application.`,
 			fmt.Printf("Backup cleanup failed: %v\n", err)
 		}
 
+		retention = time.Duration(config.Trash.Retention) * 24 * time.Hour
+
+		err = internal.CleanupTrash(config.Trash.TrashDir, retention)
+		if err != nil {
+			fmt.Printf("Trash cleanup failed: %v\n", err)
+		}
+
 		var keyword string
 		if len(args) > 0 {
 			keyword = args[0]

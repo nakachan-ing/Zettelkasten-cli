@@ -20,6 +20,11 @@ type Config struct {
 		Retention int    `yaml:"retention"`
 		BackupDir string `yaml:"backup_dir"`
 	}
+	Trash struct {
+		Frequency int    `yaml:"frequency"`
+		Retention int    `yaml:"retention"`
+		TrashDir  string `yaml:"trash_dir"`
+	}
 }
 
 func GetConfigPath() string {
@@ -84,6 +89,7 @@ func LoadConfig() (*Config, error) {
 	config.NoteDir = expandHomeDir(config.NoteDir)
 	config.Backup.BackupDir = expandHomeDir(config.Backup.BackupDir)
 	config.ZettelJson = expandHomeDir(config.ZettelJson)
+	config.Trash.TrashDir = expandHomeDir(config.Trash.TrashDir)
 
 	return &config, nil
 }

@@ -9,6 +9,35 @@ import (
 	"time"
 )
 
+func CleanupTrash(trashDir string, retentionPeriod time.Duration) error {
+	files, err := os.ReadDir(trashDir)
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		filePath := filepath.Join(trashDir, file.Name())
+		fileInfo, err := file.Info()
+		if err != nil {
+			return err
+		}
+		modTime := fileInfo.ModTime()
+
+		if now.Sub(modTime) > retentionPeriod {
+			err := os.Remove(filePath)
+			if err != nil {
+				fmt.Printf("Failed to remove trash file %s: %v\n", filePath, err)
+			} else {
+				fmt.Printf("Removed trash file: %s\n", filePath)
+			}
+		}
+	}
+	return nil
+}
+
 func CleanupBackups(backupDir string, retentionPeriod time.Duration) error {
 	files, err := os.ReadDir(backupDir)
 	if err != nil {
