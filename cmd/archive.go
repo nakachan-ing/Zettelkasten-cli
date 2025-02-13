@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// `deleted:` フィールドを更新する
-func updateDeletedToFrontMatter(frontMatter *internal.FrontMatter, flag bool) *internal.FrontMatter {
+// `archived:` フィールドを更新する
+func updateArchivedToFrontMatter(frontMatter *internal.FrontMatter, flag bool) *internal.FrontMatter {
 	if !frontMatter.Deleted {
 		frontMatter.Deleted = true
 		fmt.Println(frontMatter.Deleted)
@@ -22,9 +22,9 @@ func updateDeletedToFrontMatter(frontMatter *internal.FrontMatter, flag bool) *i
 	return frontMatter
 }
 
-// deleteCmd represents the delete command
-var deleteCmd = &cobra.Command{
-	Use:   "delete",
+// archiveCmd represents the archive command
+var archiveCmd = &cobra.Command{
+	Use:   "archive",
 	Short: "A brief description of your command",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
@@ -33,9 +33,10 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		var deleteId string
+		fmt.Println("archive called")
+		var archiveId string
 		if len(args) > 0 {
-			deleteId = args[0]
+			archiveId = args[0]
 		} else {
 			fmt.Println("❌ IDを指定してください")
 			os.Exit(1)
@@ -66,7 +67,7 @@ to quickly create a Cobra application.`,
 		}
 
 		for i := range zettels {
-			if deleteId == zettels[i].ID {
+			if archiveId == zettels[i].ID {
 				flag := true
 				note, err := os.ReadFile(zettels[i].NotePath)
 				if err != nil {
@@ -79,7 +80,7 @@ to quickly create a Cobra application.`,
 					os.Exit(1)
 				}
 
-				updatedFrontMatter := updateDeletedToFrontMatter(&frontMatter, flag)
+				updatedFrontMatter := updateArchivedToFrontMatter(&frontMatter, flag)
 				updatedContent := internal.UpdateFrontMatter(updatedFrontMatter, body)
 
 				// ✅ ファイルに書き戻し
@@ -95,35 +96,36 @@ to quickly create a Cobra application.`,
 				}
 
 				originalPath := zettels[i].NotePath
-				deletedPath := filepath.Join(config.Trash.TrashDir, zettels[i].NoteID+".md")
+				archivedPath := filepath.Join(config.Trash.TrashDir, zettels[i].NoteID+".md")
 
-				err = os.Rename(originalPath, deletedPath)
+				err = os.Rename(originalPath, archivedPath)
 				if err != nil {
 					fmt.Println("Error:", err)
 					return
 				}
 
-				zettels[i].NotePath = deletedPath
-				zettels[i].Deleted = flag
+				zettels[i].NotePath = archivedPath
+				zettels[i].Archived = flag
 				// ✅ `zettels.json` を保存
 				internal.SaveUpdatedJson(zettels, config)
 				break
 			}
 
 		}
+
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(deleteCmd)
+	rootCmd.AddCommand(archiveCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// deleteCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// archiveCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// deleteCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// archiveCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
