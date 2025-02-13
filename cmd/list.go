@@ -18,6 +18,7 @@ import (
 var listTypes []string
 var noteTags []string
 var trash bool
+var archive bool
 
 const pageSize = 20
 
@@ -70,6 +71,11 @@ to quickly create a Cobra application.`,
 			// delete フィルター
 			if trash {
 				if !zettel.Deleted {
+					continue
+				}
+				// archive フィルター
+			} else if archive {
+				if !zettel.Archived {
 					continue
 				}
 			} else {
@@ -170,4 +176,5 @@ func init() {
 	listCmd.Flags().StringSliceVarP(&listTypes, "type", "t", []string{}, "Specify note type")
 	listCmd.Flags().StringSliceVar(&noteTags, "tag", []string{}, "Specify tags")
 	listCmd.Flags().BoolVar(&trash, "trash", false, "Optional")
+	listCmd.Flags().BoolVar(&archive, "archive", false, "Optional")
 }
