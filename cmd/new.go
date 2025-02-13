@@ -4,7 +4,6 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -154,38 +153,6 @@ to quickly create a Cobra application.`,
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		updatedContent, err := os.ReadFile(newZettel.NotePath)
-		if err != nil {
-			fmt.Errorf("⚠️ マークダウンの読み込みエラー: %v", err)
-		}
-
-		frontMatter, _, err := internal.ParseFrontMatter(string(updatedContent))
-		if err != nil {
-			fmt.Println("5Error:", err)
-			os.Exit(1)
-		}
-
-		newZettel.Title = frontMatter.Title
-		newZettel.NoteType = frontMatter.Type
-		newZettel.Tags = frontMatter.Tags
-		newZettel.Links = frontMatter.Links
-		newZettel.TaskStatus = frontMatter.TaskStatus
-		newZettel.UpdatedAt = frontMatter.UpdatedAt
-
-		// JSON を更新
-		updatedJson, err := json.MarshalIndent(newZettel, "", "  ")
-		if err != nil {
-			fmt.Errorf("⚠️ JSON の変換エラー: %v", err)
-		}
-
-		// `zettel.json` に書き込み
-		err = os.WriteFile(config.ZettelJson, updatedJson, 0644)
-		if err != nil {
-			fmt.Errorf("⚠️ JSON 書き込みエラー: %v", err)
-		}
-
-		fmt.Println("✅ JSON 更新完了:", config.ZettelJson)
 	},
 }
 
