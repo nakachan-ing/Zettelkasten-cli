@@ -17,6 +17,7 @@ import (
 
 var listTypes []string
 var noteTags []string
+var trash bool
 
 const pageSize = 20
 
@@ -66,37 +67,48 @@ to quickly create a Cobra application.`,
 
 		for _, zettel := range zettels {
 
-			// --type フィルター
-			typeSet := make(map[string]bool)
-			for _, listType := range listTypes {
-				typeSet[strings.ToLower(listType)] = true
-			}
+			// delete フィルター
+			if trash {
+				if !zettel.Deleted {
+					continue
+				}
+			} else {
+				if zettel.Deleted {
+					continue
+				}
 
-			// --tag フィルター
-			tagSet := make(map[string]bool)
-			for _, tag := range noteTags {
-				tagSet[strings.ToLower(tag)] = true
-			}
+				// --type フィルター
+				typeSet := make(map[string]bool)
+				for _, listType := range listTypes {
+					typeSet[strings.ToLower(listType)] = true
+				}
 
-			// --type に指定があり、かつノートのタイプがマッチしないならスキップ
-			if len(typeSet) > 0 && !typeSet[strings.ToLower(zettel.NoteType)] {
-				continue
-			}
+				// --tag フィルター
+				tagSet := make(map[string]bool)
+				for _, tag := range noteTags {
+					tagSet[strings.ToLower(tag)] = true
+				}
 
-			// --tag フィルター処理
-			if len(tagSet) > 0 {
-				match := false
-				for _, noteTag := range zettel.Tags {
-					normalizedNoteTag := strings.ToLower(strings.TrimSpace(noteTag))
-					for filterTag := range tagSet {
-						if strings.Contains(normalizedNoteTag, filterTag) { // 部分一致
-							match = true
-							break
+				// --type に指定があり、かつノートのタイプがマッチしないならスキップ
+				if len(typeSet) > 0 && !typeSet[strings.ToLower(zettel.NoteType)] {
+					continue
+				}
+
+				// --tag フィルター処理
+				if len(tagSet) > 0 {
+					match := false
+					for _, noteTag := range zettel.Tags {
+						normalizedNoteTag := strings.ToLower(strings.TrimSpace(noteTag))
+						for filterTag := range tagSet {
+							if strings.Contains(normalizedNoteTag, filterTag) { // 部分一致
+								match = true
+								break
+							}
 						}
 					}
-				}
-				if !match {
-					continue
+					if !match {
+						continue
+					}
 				}
 			}
 
@@ -149,13 +161,6 @@ to quickly create a Cobra application.`,
 
 			page++
 		}
-		// reader := bufio.NewReader(os.Stdin)
-		// page := 0
-
-		// t.AppendRows(filteredNotes)
-
-		// t.Render()
-
 	},
 }
 
@@ -164,4 +169,5 @@ func init() {
 
 	listCmd.Flags().StringSliceVarP(&listTypes, "type", "t", []string{}, "Specify note type")
 	listCmd.Flags().StringSliceVar(&noteTags, "tag", []string{}, "Specify tags")
+	listCmd.Flags().BoolVar(&trash, "trash", false, "Optional")
 }

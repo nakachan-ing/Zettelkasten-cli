@@ -122,6 +122,7 @@ to quickly create a Cobra application.`,
 				}
 
 				zettels[i].NotePath = deletedPath
+				zettels[i].Deleted = flag
 				// ✅ `zettels.json` を保存
 				internal.SaveUpdatedJson(zettels, config)
 				break
