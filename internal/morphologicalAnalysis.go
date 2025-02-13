@@ -166,14 +166,14 @@ func GetNoteKeywords(note Note) map[string]float64 {
 }
 
 // 🔍 **関連ノートを検索**
-func FindRelatedNotes(fromZettel Zettel, zettels []Zettel, threshold float64, tfidfMap map[string]map[string]float64) []string {
-	var relatedIDs []string
+func FindRelatedNotes(fromZettel Zettel, zettels []Zettel, threshold float64, tfidfMap map[string]map[string]float64) []Zettel {
+	var relatedNotes []Zettel
 
 	// ✅ `fromZettel` の TF-IDF を取得
 	fromTFIDF, exists := tfidfMap[fromZettel.NoteID]
 	if !exists {
 		fmt.Println("⚠️ `TF-IDF` データが見つかりません:", fromZettel.NoteID)
-		return relatedIDs
+		return relatedNotes
 	}
 
 	// ✅ 他のノートとの類似度を計算
@@ -191,11 +191,11 @@ func FindRelatedNotes(fromZettel Zettel, zettels []Zettel, threshold float64, tf
 		// コサイン類似度を計算
 		similarity := CosineSimilarity(fromTFIDF, noteTFIDF)
 		if similarity >= threshold {
-			relatedIDs = append(relatedIDs, zettel.NoteID)
+			relatedNotes = append(relatedNotes, zettel)
 		}
 	}
 
-	return relatedIDs
+	return relatedNotes
 }
 
 // ✅ 各 `Zettel` から `TF-IDF` を計算する関数
