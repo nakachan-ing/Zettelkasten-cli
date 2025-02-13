@@ -4,6 +4,7 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -76,7 +77,7 @@ func createNewNote(title, noteType string, tags []string, config internal.Config
 		Title:     fmt.Sprintf("%v", title),
 		Tags:      tags,
 		CreatedAt: fmt.Sprintf("%v", createdAt),
-		UpdatedAt: "",
+		UpdatedAt: fmt.Sprintf("%v", createdAt),
 		NotePath:  filePath,
 	}
 
@@ -135,12 +136,12 @@ to quickly create a Cobra application.`,
 			fmt.Printf("Trash cleanup failed: %v\n", err)
 		}
 
-		newZettelStr, newZettelJson, err := createNewNote(title, noteType, tags, *config)
+		newZettelStr, newZettel, err := createNewNote(title, noteType, tags, *config)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		fmt.Println(newZettelJson)
+		fmt.Println(newZettel)
 		fmt.Printf("Opening %q (Title: %q)...\n", newZettelStr, title)
 
 		time.Sleep(2 * time.Second)
@@ -154,37 +155,37 @@ to quickly create a Cobra application.`,
 			log.Fatal(err)
 		}
 
-		// updatedContent, err := os.ReadFile(newZettelJson.NotePath)
-		// if err != nil {
-		// 	fmt.Errorf("⚠️ マークダウンの読み込みエラー: %v", err)
-		// }
+		updatedContent, err := os.ReadFile(newZettel.NotePath)
+		if err != nil {
+			fmt.Errorf("⚠️ マークダウンの読み込みエラー: %v", err)
+		}
 
-		// frontMatter, _, err := internal.ParseFrontMatter(string(updatedContent))
-		// if err != nil {
-		// 	fmt.Println("5Error:", err)
-		// 	os.Exit(1)
-		// }
+		frontMatter, _, err := internal.ParseFrontMatter(string(updatedContent))
+		if err != nil {
+			fmt.Println("5Error:", err)
+			os.Exit(1)
+		}
 
-		// newZettelJson.Title = frontMatter.Title
-		// newZettelJson.NoteType = frontMatter.Type
-		// newZettelJson.Tags = frontMatter.Tags
-		// newZettelJson.Links = frontMatter.Links
-		// newZettelJson.TaskStatus = frontMatter.TaskStatus
-		// newZettelJson.UpdatedAt = frontMatter.UpdatedAt
+		newZettel.Title = frontMatter.Title
+		newZettel.NoteType = frontMatter.Type
+		newZettel.Tags = frontMatter.Tags
+		newZettel.Links = frontMatter.Links
+		newZettel.TaskStatus = frontMatter.TaskStatus
+		newZettel.UpdatedAt = frontMatter.UpdatedAt
 
 		// JSON を更新
-		// updatedJson, err := json.MarshalIndent(newZettelJson, "", "  ")
-		// if err != nil {
-		// 	fmt.Errorf("⚠️ JSON の変換エラー: %v", err)
-		// }
+		updatedJson, err := json.MarshalIndent(newZettel, "", "  ")
+		if err != nil {
+			fmt.Errorf("⚠️ JSON の変換エラー: %v", err)
+		}
 
-		// // `zettel.json` に書き込み
-		// err = os.WriteFile(config.ZettelJson, updatedJson, 0644)
-		// if err != nil {
-		// 	fmt.Errorf("⚠️ JSON 書き込みエラー: %v", err)
-		// }
+		// `zettel.json` に書き込み
+		err = os.WriteFile(config.ZettelJson, updatedJson, 0644)
+		if err != nil {
+			fmt.Errorf("⚠️ JSON 書き込みエラー: %v", err)
+		}
 
-		// fmt.Println("✅ JSON 更新完了:", config.ZettelJson)
+		fmt.Println("✅ JSON 更新完了:", config.ZettelJson)
 	},
 }
 
