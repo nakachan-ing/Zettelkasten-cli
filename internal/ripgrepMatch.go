@@ -26,58 +26,6 @@ type RipgrepMatch struct {
 	} `json:"data"`
 }
 
-// func ParseRipgrepOutput(output string) map[string][]string {
-// 	results := make(map[string][]string) // ファイルごとにまとめる
-// 	lines := strings.Split(output, "\n")
-
-// 	// fmt.Println("🔍 Parsing ripgrep JSON output...") // デバッグログ
-
-// 	var currentFile string
-// 	var currentMatch string
-
-// 	for _, line := range lines {
-// 		if line == "" {
-// 			continue
-// 		}
-
-// 		var match RipgrepMatch
-// 		err := json.Unmarshal([]byte(line), &match)
-// 		if err != nil {
-// 			// fmt.Println("❌ JSON parse error:", err, "Line:", line)
-// 			continue
-// 		}
-
-// 		// match.Type のデバッグ出力
-// 		// fmt.Println("📝 match.Type:", match.Type)
-
-// 		// `match` の場合
-// 		if match.Type == "match" {
-// 			currentFile = match.Data.Path.Text
-// 			currentMatch = fmt.Sprintf("📄 %s:%d\n   → %s",
-// 				currentFile, match.Data.LineNumber, strings.TrimSpace(match.Data.Lines.Text))
-// 			results[currentFile] = append(results[currentFile], currentMatch)
-// 		}
-
-// 		// `context` の場合
-// 		if match.Type == "context" {
-// 			if currentFile != match.Data.Path.Text {
-// 				continue // 直前の `match` と同じファイルでなければスキップ
-// 			}
-
-// 			if strings.TrimSpace(match.Data.Lines.Text) == "" {
-// 				continue // 空白行はスキップ
-// 			}
-
-// 			// `→` の後にインデントして `context` の行を追加
-// 			contextLine := fmt.Sprintf("   → %s", strings.TrimSpace(match.Data.Lines.Text))
-// 			results[currentFile] = append(results[currentFile], contextLine)
-// 		}
-// 	}
-
-// 	// fmt.Println("🔍 Final parsed results:", results) // デバッグ
-// 	return results
-// }
-
 func ParseRipgrepOutput(output string) map[string][]string {
 	results := make(map[string][]string) // ファイルごとにまとめる
 	lines := strings.Split(output, "\n")

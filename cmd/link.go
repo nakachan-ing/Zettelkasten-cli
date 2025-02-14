@@ -4,10 +4,11 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
+	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/nakachan-ing/Zettelkasten-cli/internal"
@@ -17,16 +18,11 @@ import (
 var threshold float64
 
 // `links:` フィールドを更新する
-func AddLinkToFrontMatter(frontMatter *internal.FrontMatter, newLinks []string) *internal.FrontMatter {
+func addLinkToFrontMatter(frontMatter *internal.FrontMatter, newLinks []string) *internal.FrontMatter {
 	if frontMatter.Links == nil {
 		frontMatter.Links = []string{}
 		fmt.Println(frontMatter.Links)
 	} else {
-		// for _, newLink := range newLinks {
-		// 	frontMatter.Links = append(frontMatter.Links, newLink)
-		// }
-
-		// fmt.Println(frontMatter.Links)
 		for _, newLink := range newLinks {
 			// 重複チェック
 			exists := false
@@ -45,7 +41,7 @@ func AddLinkToFrontMatter(frontMatter *internal.FrontMatter, newLinks []string) 
 }
 
 // 🔍 **ユーザーに関連ノートを選択させる**
-func SelectRelatedNotes(relatedNotes []internal.Zettel) []string {
+func selectRelatedNotes(relatedNotes []internal.Zettel) []string {
 	var selected []string
 	options := []string{}
 
@@ -68,96 +64,7 @@ func SelectRelatedNotes(relatedNotes []internal.Zettel) []string {
 	return selectedIDs
 }
 
-// 📥 `zettel.json` からノートをロードし、TF-IDF を計算
-func LoadNotesWithTFIDF(config *internal.Config) ([]internal.Note, error) {
-	zettels, err := internal.LoadJson(*config)
-	if err != nil {
-		return nil, fmt.Errorf("❌ JSON 読み込みエラー: %v", err)
-	}
-
-	var notes []internal.Note
-
-	// 各 `Zettel` を `Note` に変換
-	for _, z := range zettels {
-		content, err := os.ReadFile(z.NotePath)
-		if err != nil {
-			fmt.Printf("⚠️ ノートの読み込み失敗: %s (%v)\n", z.NotePath, err)
-			continue
-		}
-
-		// MeCab でキーワード抽出
-		keywords, err := internal.ExtractKeywordsMeCab(string(content))
-		if err != nil {
-			fmt.Printf("⚠️ キーワード抽出失敗: %s (%v)\n", z.NotePath, err)
-			continue
-		}
-
-		// `Note` 構造体にマッピング
-		notes = append(notes, internal.Note{
-			ID:       z.ID,
-			NoteId:   z.NoteID,
-			Title:    z.Title,
-			Content:  string(content),
-			Keywords: keywords,
-		})
-	}
-
-	// IDF を計算
-	idf := internal.CalculateIDF(notes)
-
-	// 各ノートの TF-IDF を計算
-	for i := range notes {
-		tf := internal.CalculateTF(notes[i].Keywords)
-		tfidf := make(map[string]float64)
-		for word, tfVal := range tf {
-			tfidf[word] = tfVal * idf[word]
-		}
-		notes[i].TFIDF = tfidf
-	}
-
-	return notes, nil
-}
-
-// ✍️ **Markdown ファイルを更新**
-func UpdateMarkdownFile(note internal.Note, relatedIDs []string, config *internal.Config) {
-	content, err := os.ReadFile(note.Content)
-	if err != nil {
-		fmt.Println("❌ Error reading note:", err)
-		return
-	}
-
-	frontMatter, body, err := internal.ParseFrontMatter(string(content))
-	if err != nil {
-		fmt.Println("❌ Error parsing front matter:", err)
-		return
-	}
-
-	updatedFrontMatter := AddLinkToFrontMatter(&frontMatter, relatedIDs)
-	updatedContent := internal.UpdateFrontMatter(updatedFrontMatter, body)
-
-	err = os.WriteFile(note.Content, []byte(updatedContent), 0644)
-	if err != nil {
-		fmt.Println("❌ Error updating note:", err)
-	}
-}
-
-// 💾 **zettel.json を保存**
-func SaveUpdatedJson(zettels []internal.Zettel, config *internal.Config) {
-	updatedJson, err := json.MarshalIndent(zettels, "", "  ")
-	if err != nil {
-		fmt.Println("⚠️ JSON の変換エラー:", err)
-		return
-	}
-
-	err = os.WriteFile(config.ZettelJson, updatedJson, 0644)
-	if err != nil {
-		fmt.Println("⚠️ JSON 書き込みエラー:", err)
-	} else {
-		fmt.Println("✅ JSON 更新完了:", config.ZettelJson)
-	}
-}
-
-func AutoLinkNotes(fromID string, threshold float64, config internal.Config, zettels []internal.Zettel, tfidfMap map[string]map[string]float64) {
+func autoLinkNotes(fromID string, threshold float64, config internal.Config, zettels []internal.Zettel, tfidfMap map[string]map[string]float64) {
 	// ✅ `fromID` の前後のスペースを削除
 	cleanFromID := strings.TrimSpace(fromID)
 	fmt.Println("🔍 クリーンな `fromID`:", cleanFromID)
@@ -182,8 +89,8 @@ func AutoLinkNotes(fromID string, threshold float64, config internal.Config, zet
 	// ✅ `FileID` と `FilePath` を取得
 	fileID := fromZettel.NoteID
 	filePath := fromZettel.NotePath
-	fmt.Println("✅ `zettels.json` から取得した `FileID`:", fileID)
-	fmt.Println("📄 `zettels.json` から取得した `FilePath`:", filePath)
+	// fmt.Println("✅ `zettels.json` から取得した `FileID`:", fileID)
+	// fmt.Println("📄 `zettels.json` から取得した `FilePath`:", filePath)
 
 	// ✅ ノートが存在するかチェック
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
@@ -199,7 +106,7 @@ func AutoLinkNotes(fromID string, threshold float64, config internal.Config, zet
 	}
 
 	// ✅ **ユーザーに関連ノートを選択させる**
-	selectedIDs := SelectRelatedNotes(relatedNotes)
+	selectedIDs := selectRelatedNotes(relatedNotes)
 	if len(selectedIDs) == 0 {
 		fmt.Println("⚠️ 何も選択されませんでした。リンクは追加されません。")
 		return
@@ -208,7 +115,7 @@ func AutoLinkNotes(fromID string, threshold float64, config internal.Config, zet
 	// ✅ `zettels.json` の `Links` を更新
 	for i := range zettels {
 		if zettels[i].NoteID == fileID {
-			zettels[i].Links = MergeUniqueLinks(zettels[i].Links, selectedIDs)
+			zettels[i].Links = mergeUniqueLinks(zettels[i].Links, selectedIDs)
 			break
 		}
 	}
@@ -227,7 +134,7 @@ func AutoLinkNotes(fromID string, threshold float64, config internal.Config, zet
 	}
 
 	// ✅ リンクを追加
-	updatedFrontMatter := AddLinkToFrontMatter(&frontMatter, selectedIDs)
+	updatedFrontMatter := addLinkToFrontMatter(&frontMatter, selectedIDs)
 	updatedContent := internal.UpdateFrontMatter(updatedFrontMatter, body)
 
 	// ✅ ファイルに書き戻し
@@ -238,13 +145,13 @@ func AutoLinkNotes(fromID string, threshold float64, config internal.Config, zet
 	}
 
 	// ✅ `zettels.json` を保存
-	SaveUpdatedJson(zettels, &config)
+	internal.SaveUpdatedJson(zettels, &config)
 
 	fmt.Printf("✅ 自動リンク完了: [%s]%s に関連ノートを追加しました\n", fromZettel.NoteID, fromZettel.Title)
 }
 
 // `existingLinks`（既存のリンク）と `newLinks`（追加するリンク）を統合し、重複を排除
-func MergeUniqueLinks(existingLinks, newLinks []string) []string {
+func mergeUniqueLinks(existingLinks, newLinks []string) []string {
 	linkSet := make(map[string]bool)
 	var merged []string
 
@@ -263,6 +170,78 @@ func MergeUniqueLinks(existingLinks, newLinks []string) []string {
 	}
 
 	return merged
+}
+
+// ✍️ **文脈の中に `[title](ファイル名)` を挿入**
+// ✍️ **文脈の中に `[title](ファイル名)` を挿入**
+func insertLinkInContext(filePath string, title string, fileName string, keywords []string) (string, error) {
+	// ✅ ノートの内容を取得
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", fmt.Errorf("❌ ノートの読み込みエラー: %v", err)
+	}
+	text := string(content)
+
+	// ✅ **フロントマター部分と本文を分離**
+	parts := strings.SplitN(text, "---", 3)
+	if len(parts) < 3 {
+		return "", fmt.Errorf("❌ フロントマターの解析エラー: `---` の区切りが不足しています")
+	}
+	frontMatter := "---" + parts[1] + "---\n" // フロントマター
+	body := parts[2]                          // 本文
+
+	// ✅ **すでに同じリンクがある場合は何もしない**
+	markdownLink := fmt.Sprintf("[%s](%s)", title, fileName)
+	if strings.Contains(body, markdownLink) {
+		fmt.Println("⚠️ 既にリンクが存在するため、追加しません:", markdownLink)
+		return text, nil
+	}
+
+	// ✅ **キーワードの出現位置を取得**
+	var keywordPositions []string
+	positionMap := make(map[string]int)
+	for _, keyword := range keywords {
+		re := regexp.MustCompile(fmt.Sprintf(`\b%s\b`, regexp.QuoteMeta(keyword)))
+		loc := re.FindStringIndex(body)
+		if loc != nil {
+			position := fmt.Sprintf("%s の後", keyword)
+			keywordPositions = append(keywordPositions, position)
+			positionMap[position] = loc[1] // 挿入する位置
+		}
+	}
+
+	// ✅ **選択肢を作成**
+	keywordPositions = append(keywordPositions, "### Links に追加")
+
+	// ✅ **ユーザーに挿入場所を選択させる**
+	var selectedPosition string
+	prompt := &survey.Select{
+		Message: "リンクを挿入する場所を選択してください:",
+		Options: keywordPositions,
+	}
+	survey.AskOne(prompt, &selectedPosition, nil)
+
+	// ✅ **ユーザーが選択した場所にリンクを挿入**
+	inserted := false
+	if selectedPosition != "### Links に追加" {
+		insertPos := positionMap[selectedPosition]
+		body = body[:insertPos] + " " + markdownLink + body[insertPos:]
+		inserted = true
+		fmt.Println("✅ 文脈の中にリンクを挿入しました:", markdownLink)
+	}
+
+	// ✅ **適切な場所が見つからなかった場合、`### Links` に追加**
+	if !inserted {
+		if !strings.Contains(body, "### Links") {
+			body += "\n\n### Links"
+		}
+		body += fmt.Sprintf("\n- %s", markdownLink)
+		fmt.Println("✅ `### Links` に追加しました:", markdownLink)
+	}
+
+	// ✅ **更新された内容を返す**
+	updatedText := frontMatter + body
+	return updatedText, nil
 }
 
 // linkCmd represents the link command
@@ -313,60 +292,91 @@ func runManualLink(sourceId, destinationId string) error {
 		return fmt.Errorf("❌ 設定ファイルの読み込みエラー: %v", err)
 	}
 
+	err = internal.CleanupBackups(config.Backup.BackupDir, time.Duration(config.Backup.Retention)*24*time.Hour)
+	if err != nil {
+		fmt.Printf("Backup cleanup failed: %v\n", err)
+	}
+	err = internal.CleanupTrash(config.Trash.TrashDir, time.Duration(config.Trash.Retention)*24*time.Hour)
+	if err != nil {
+		fmt.Printf("Trash cleanup failed: %v\n", err)
+	}
+
 	zettels, err := internal.LoadJson(*config)
 	if err != nil {
 		return fmt.Errorf("❌ Jsonファイルの読み込みエラー: %v", err)
 	}
 
+	var sourceZettel *internal.Zettel
+	var destinationZettel *internal.Zettel
+
 	for i := range zettels {
 		if zettels[i].ID == sourceId {
-			sourceLinkId := zettels[i].NoteID
-			filePath := fmt.Sprintf("%s/%s.md", config.NoteDir, sourceLinkId)
-			content, err := os.ReadFile(filePath)
-			if err != nil {
-				return fmt.Errorf("❌ ノートの読み込みエラー: %v", err)
-			}
-			// ✅ フロントマターを解析
-			frontMatter, body, err := internal.ParseFrontMatter(string(content))
-			if err != nil {
-				return fmt.Errorf("❌ フロントマターの解析エラー: %v", err)
-			}
-
-			// ✅ `frontMatter.Links` が `nil` の場合に初期化
-			if frontMatter.Links == nil {
-				frontMatter.Links = []string{}
-			}
-			for ii := range zettels {
-				destLinkIds := []string{}
-				if zettels[ii].ID == destinationId {
-					destLinkId := zettels[ii].NoteID
-					fmt.Println(destLinkId)
-					destLinkIds = append(destLinkIds, destLinkId)
-					// ✅ 既存の `Links` に `destinationId` を追加
-					updatedFrontMatter := AddLinkToFrontMatter(&frontMatter, destLinkIds)
-
-					// ✅ フロントマターを更新した新しい Markdown コンテンツを作成
-					updatedContent := internal.UpdateFrontMatter(updatedFrontMatter, body)
-
-					// ✅ Markdown を更新（書き込み処理）
-					err = os.WriteFile(filePath, []byte(updatedContent), 0644)
-					if err != nil {
-						return fmt.Errorf("❌ Markdown 書き込みエラー: %v", err)
-					}
-
-					// ✅ `zettels.json` の `Links` も更新
-					zettels[i].Links = MergeUniqueLinks(zettels[i].Links, []string{destLinkId})
-
-					// ✅ `zettels.json` を保存
-					SaveUpdatedJson(zettels, config)
-
-					fmt.Printf("✅ ノート [%s]%s に [%s]%s をリンクしました\n", zettels[i].NoteID, zettels[i].Title, zettels[ii].NoteID, zettels[ii].Title)
-					return nil
-				}
-			}
-
+			sourceZettel = &zettels[i]
+		}
+		if zettels[i].ID == destinationId {
+			destinationZettel = &zettels[i]
 		}
 	}
+
+	// ✅ `sourceId` または `destinationId` が見つからない場合
+	if sourceZettel == nil || destinationZettel == nil {
+		return fmt.Errorf("❌ 指定されたノートが見つかりません: %s -> %s", sourceId, destinationId)
+	}
+
+	// ✅ `sourceZettel` のノートを取得
+	filePath := sourceZettel.NotePath
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("❌ ノートの読み込みエラー: %v", err)
+	}
+
+	// ✅ フロントマターを解析
+	frontMatter, body, err := internal.ParseFrontMatter(string(content))
+	if err != nil {
+		return fmt.Errorf("❌ フロントマターの解析エラー: %v", err)
+	}
+
+	// ✅ **MeCab でキーワードを抽出**
+	// keywords, err := internal.ExtractKeywordsMeCab(body)
+	// if err != nil {
+	// 	return fmt.Errorf("❌ キーワード抽出エラー: %v", err)
+	// }
+
+	// ✅ **MeCab でフレーズを抽出**
+	keyPhrases, err := internal.ExtractKeyPhrasesMeCab(string(body))
+	if err != nil {
+		return fmt.Errorf("❌ フレーズ抽出エラー: %v", err)
+	}
+
+	// ✅ **ユーザーに挿入場所を選択させる**
+	updatedMarkdown, err := insertLinkInContext(filePath, destinationZettel.Title, destinationZettel.NoteID+".md", keyPhrases)
+	if err != nil {
+		return fmt.Errorf("❌ Markdown 内へのリンク挿入エラー: %v", err)
+	}
+
+	// ✅ **フロントマターを更新**
+	frontMatter, body, err = internal.ParseFrontMatter(updatedMarkdown)
+	if err != nil {
+		return fmt.Errorf("❌ フロントマターの解析エラー: %v", err)
+	}
+	updatedFrontMatter := addLinkToFrontMatter(&frontMatter, []string{destinationZettel.NoteID})
+
+	// ✅ **フロントマターを適用**
+	finalMarkdown := internal.UpdateFrontMatter(updatedFrontMatter, body)
+
+	// ✅ **Markdown を最終更新（書き込み処理）**
+	err = os.WriteFile(filePath, []byte(finalMarkdown), 0644)
+	if err != nil {
+		return fmt.Errorf("❌ 最終 Markdown 書き込みエラー: %v", err)
+	}
+
+	// ✅ `zettels.json` の `Links` も更新
+	sourceZettel.Links = mergeUniqueLinks(sourceZettel.Links, []string{destinationZettel.NoteID})
+
+	// ✅ `zettels.json` を保存
+	internal.SaveUpdatedJson(zettels, config)
+
+	fmt.Printf("✅ ノート [%s] %s に [%s] %s をリンクしました\n", sourceZettel.NoteID, sourceZettel.Title, destinationZettel.NoteID, destinationZettel.Title)
 	return nil
 
 }
@@ -376,6 +386,20 @@ func runAutoLink(fromID string) error {
 	config, err := internal.LoadConfig()
 	if err != nil || config == nil {
 		return fmt.Errorf("❌ 設定ファイルの読み込みエラー: %v", err)
+	}
+
+	retention := time.Duration(config.Backup.Retention) * 24 * time.Hour
+
+	err = internal.CleanupBackups(config.Backup.BackupDir, retention)
+	if err != nil {
+		fmt.Printf("Backup cleanup failed: %v\n", err)
+	}
+
+	retention = time.Duration(config.Trash.Retention) * 24 * time.Hour
+
+	err = internal.CleanupTrash(config.Trash.TrashDir, retention)
+	if err != nil {
+		fmt.Printf("Trash cleanup failed: %v\n", err)
 	}
 
 	// ✅ `zettels.json` をロード
@@ -388,7 +412,7 @@ func runAutoLink(fromID string) error {
 	tfidfMap := internal.ComputeTFIDFForZettels(zettels)
 
 	// ✅ `fromID` から `zettels.json` の情報を取得するように変更
-	AutoLinkNotes(fromID, threshold, *config, zettels, tfidfMap)
+	autoLinkNotes(fromID, threshold, *config, zettels, tfidfMap)
 
 	return nil
 }
