@@ -2,6 +2,79 @@
 
 **zettelkasten-cli** は、Zettelkasten メソッドに基づいたメモ管理をコマンドラインで行うためのツールです。効率的に知識を整理し、関連するメモをリンクすることで、思考のネットワークを構築できます。
 
+## 🚀 インストール方法
+
+### **1. `go install` を使う（Go 環境がある場合）**
+Go がインストールされている場合は、以下のコマンドで直接インストールできます。
+
+```sh
+go install github.com/yourname/zettelkasten-cli@latest
+mv $(go env GOPATH)/bin/zettelkasten-cli $(go env GOPATH)/bin/zk
+```
+
+※ `$GOBIN` にバイナリが配置されるため、`PATH` に追加してください。
+
+---
+
+### **2. GitHub Releases からバイナリをダウンロード**
+Go をインストールしていない場合は、[GitHub Releases](https://github.com/yourname/zettelkasten-cli/releases) から OS に対応したバイナリをダウンロードし、実行権限を付与して使うことができます。
+
+**Mac/Linux**
+```sh
+wget https://github.com/yourname/zettelkasten-cli/releases/download/v1.0.0/zk-mac
+mv zk-mac /usr/local/bin/zk
+chmod +x /usr/local/bin/zk
+```
+
+**Windows（PowerShell）**
+```sh
+Invoke-WebRequest -Uri "https://github.com/yourname/zettelkasten-cli/releases/download/v1.0.0/zk.exe" -OutFile "C:\Program Files\zk.exe"
+```
+
+---
+
+### **3. 必要な依存ツールのインストール**
+`zettelkasten-cli` は、一部の機能で **MeCab** や **fzf** などのツールを利用するため、必要に応じてインストールしてください。
+
+#### **`MeCab`（形態素解析：検索・リンク補完で使用）**
+**Mac（Homebrew）**
+```sh
+brew install mecab mecab-ipadic
+```
+**Ubuntu/Debian**
+```sh
+sudo apt install mecab libmecab-dev mecab-ipadic
+```
+
+### **Windows**
+1. [公式サイト](https://taku910.github.io/mecab/) から `mecab-0.996.exe` をダウンロード
+2. インストール時に **「UTF-8 辞書 (`mecab-ipadic-utf8`)」** を選択
+3. `mecab.exe` のパス `C:\Program Files\MeCab\bin` を環境変数 `PATH` に追加
+4. インストール後、以下のコマンドで動作確認：
+   ```powershell
+   mecab --version
+   echo "私はプログラマーです。" | mecab
+   ```
+
+#### **`fzf`（インタラクティブ検索）**
+`zk list` や `zk search` で **インタラクティブにメモを選択** するために使用します。
+
+**Mac（Homebrew）**
+```sh
+brew install fzf
+```
+**Ubuntu/Debian**
+```sh
+sudo apt install fzf
+```
+
+**Windows（Scoop）**
+```sh
+scoop install fzf
+```
+
+---
+
 ## 現在実装済みの機能
 
 ### 1. `zk new`
@@ -121,20 +194,33 @@ zk project add [id] "My DevOps Learning"
 zk list --tag project:My_DevOps_Learning
 ```
 
----
+## **11. `zk sync`（メモと JSON の同期）**
+`zk sync` は、Markdown ファイルと `zettel.json` を同期するためのコマンドです。
 
-## **今後の予定**
-- **メモのリマインダー機能**
-- **日付ベースのタスク管理 (`zk task due`)**
-- **自動タグ付け機能**
-- **統計・分析機能 (`zk stats`)**
+### **なぜ `zk sync` が必要か？**
+- **ファイルを手動で編集・削除した場合**
+  - `zk delete` や `zk archive` を使わずにメモを手動で移動・削除した場合、`zettel.json` のデータと実際のファイルが一致しなくなる。
+- **外部ツールと連携した場合**
+  - Obsidian やエディタで直接メモを変更した後に、`zk sync` を実行すると **JSON を最新の状態に更新** できる。
 
----
+### **使い方**
+#### **1. メモと `zettel.json` を同期**
+```sh
+zk sync
+```
+**すべてのメモをスキャンし、`zettel.json` の内容を最新化**
 
-## **インストール方法**
-（インストール方法が決まり次第追加）
+#### **2. メモのステータス（アーカイブ・ゴミ箱）を再確認**
+```sh
+zk sync --check-status
+```
+**削除済み or アーカイブ済みのメモが `zettel.json` に正しく反映されているかチェック**
 
----
+#### **3. 不要なエントリを削除**
+```sh
+zk sync --clean
+```
+**既に存在しないメモのデータを `zettel.json` から削除**
 
 ## **貢献**
 バグ報告や機能提案は Issue にて受け付けています。
