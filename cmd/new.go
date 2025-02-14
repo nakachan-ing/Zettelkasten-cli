@@ -24,11 +24,13 @@ var validTypes = map[string]bool{
 	"fleeting":   true,
 	"literature": true,
 	"permanent":  true,
+	"index":      true,
+	"structure":  true,
 }
 
 func validateNoteType(noteType string) error {
 	if !validTypes[noteType] {
-		return errors.New("invalid note type: must be 'fleeting', 'literature', or 'permanent'")
+		return errors.New("invalid note type: must be 'fleeting', 'literature', 'permanent', 'index' or 'structure'")
 	}
 	return nil
 }
@@ -121,26 +123,21 @@ to quickly create a Cobra application.`,
 			return
 		}
 
-		retention := time.Duration(config.Backup.Retention) * 24 * time.Hour
-
-		err = internal.CleanupBackups(config.Backup.BackupDir, retention)
+		err = internal.CleanupBackups(config.Backup.BackupDir, time.Duration(config.Backup.Retention)*24*time.Hour)
 		if err != nil {
 			fmt.Printf("Backup cleanup failed: %v\n", err)
 		}
-
-		retention = time.Duration(config.Trash.Retention) * 24 * time.Hour
-
-		err = internal.CleanupTrash(config.Trash.TrashDir, retention)
+		err = internal.CleanupTrash(config.Trash.TrashDir, time.Duration(config.Trash.Retention)*24*time.Hour)
 		if err != nil {
 			fmt.Printf("Trash cleanup failed: %v\n", err)
 		}
 
-		newZettelStr, newZettel, err := createNewNote(title, noteType, tags, *config)
+		newZettelStr, _, err := createNewNote(title, noteType, tags, *config)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		fmt.Println(newZettel)
+		// fmt.Println(newZettel)
 		fmt.Printf("Opening %q (Title: %q)...\n", newZettelStr, title)
 
 		time.Sleep(2 * time.Second)

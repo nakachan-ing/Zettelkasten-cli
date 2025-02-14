@@ -164,7 +164,11 @@ to quickly create a Cobra application.`,
 				case "literature":
 					typeColored = text.FgHiYellow.Sprintf(noteType) // 明るい黄色
 				case "fleeting":
-					typeColored = noteType // 明るい赤
+					typeColored = noteType // デフォルト
+				case "index":
+					typeColored = text.FgHiMagenta.Sprintf(noteType) // 明るいマゼンタ
+				case "structure":
+					typeColored = text.FgHiGreen.Sprintf(noteType) // 明るい緑
 				}
 
 				// 色付きの Type を適用して行を追加
