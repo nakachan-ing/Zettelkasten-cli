@@ -41,16 +41,13 @@ to quickly create a Cobra application.`,
 			return
 		}
 
-		retention := time.Duration(config.Backup.Retention) * 24 * time.Hour
-
-		err = internal.CleanupBackups(config.Backup.BackupDir, retention)
+		err = internal.CleanupBackups(config.Backup.BackupDir, time.Duration(config.Backup.Retention)*24*time.Hour)
 		if err != nil {
 			fmt.Printf("Backup cleanup failed: %v\n", err)
 		}
-
+		err = internal.CleanupTrash(config.Trash.TrashDir, time.Duration(config.Trash.Retention)*24*time.Hour)
 		if err != nil {
-			fmt.Println("Error:", err)
-			return
+			fmt.Printf("Trash cleanup failed: %v\n", err)
 		}
 
 		filteredNotes := []table.Row{}
@@ -115,7 +112,7 @@ to quickly create a Cobra application.`,
 			// 🔹 `--tag` がない場合でもここに到達するように修正
 			filteredNotes = append(filteredNotes, table.Row{
 				zettel.ID, zettel.Title, zettel.NoteType, zettel.Tags,
-				zettel.CreatedAt, zettel.UpdatedAt, "-", len(zettel.Links),
+				zettel.CreatedAt, zettel.UpdatedAt, len(zettel.Links),
 			})
 		}
 		// ページネーションの処理
@@ -150,7 +147,7 @@ to quickly create a Cobra application.`,
 				text.FgGreen.Sprintf("ID"), text.FgGreen.Sprintf(text.Bold.Sprintf("Title")),
 				text.FgGreen.Sprintf("Type"), text.FgGreen.Sprintf("Tags"),
 				text.FgGreen.Sprintf("Created"), text.FgGreen.Sprintf("Updated"),
-				text.FgGreen.Sprintf("Project"), text.FgGreen.Sprintf("Links"),
+				text.FgGreen.Sprintf("Links"),
 			})
 			// データを追加（Type によって色を変更）
 			for _, row := range filteredNotes[start:end] {
@@ -173,7 +170,7 @@ to quickly create a Cobra application.`,
 
 				// 色付きの Type を適用して行を追加
 				t.AppendRow(table.Row{
-					row[0], row[1], typeColored, row[3], row[4], row[5], row[6], row[7],
+					row[0], row[1], typeColored, row[3], row[4], row[5], row[6],
 				})
 			}
 			t.Render()
