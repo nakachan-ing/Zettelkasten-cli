@@ -73,6 +73,9 @@ to quickly create a Cobra application.`,
 				if zettel.Deleted {
 					continue
 				}
+				if zettel.NoteType == "task" {
+					continue
+				}
 
 				// --type フィルター
 				typeSet := make(map[string]bool)
