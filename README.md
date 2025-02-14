@@ -57,15 +57,89 @@ zk search --interactive
 zk link [link元id] [link先id]
 ```
 
-## 今後の予定
-- `zk delete`（メモの削除）
-- `zk archive`（アーカイブ機能）
-- `zk task`（タスク管理機能）
-- `zk project`（プロジェクト管理機能）
+## 🔥 **新機能: メモの整理とタスク管理**
+### **7. `zk delete`（メモの削除）**
+不要なメモを削除します。削除されたメモはゴミ箱 (`Trash/`) に移動され、`zk list --trash` で一覧表示できます。
 
-## インストール方法
+```sh
+zk delete 20250212142531
+```
+
+**完全削除したい場合（復元不可）**
+```sh
+zk delete 20250212142531 --permanent
+```
+
+**削除したメモを復元**
+```sh
+zk restore 20250212142531
+```
+
+---
+
+### **8. `zk archive`（アーカイブ機能）**
+メモを削除せずにアーカイブし、通常の `zk list` で表示されないようにします。  
+アーカイブされたメモは `archive/` フォルダに移動し、`zk list --archive` で一覧表示できます。
+
+```sh
+zk archive 20250212142531
+```
+
+**アーカイブされたメモを復元**
+```sh
+zk restore 20250212142531 --archive
+```
+
+---
+
+### **9. `zk task`（タスク管理機能）**
+メモをタスクとして管理し、`Not started` / `In progress` / `Wating` / `On hold` / `Done` のステータスを設定できます。
+
+**タスクを一覧表示**
+```sh
+zk task list
+```
+
+**タスクのステータスを変更**
+```sh
+zk task status [id] "In progress"
+zk task update [id] "Done"
+```
+
+---
+
+### **10. `zk project`（プロジェクト管理機能）**
+プロジェクトごとにメモを整理し、関連メモを簡単に管理できるようにします。
+
+**新しいプロジェクトを作成**
+```sh
+zk project new "My DevOps Learning"
+```
+
+**プロジェクトにメモを追加**
+```sh
+zk project add id "My DevOps Learning"
+```
+
+**プロジェクトのメモを一覧表示**
+```sh
+zk list --tag project:My_DevOps_Learning
+```
+
+---
+
+## **今後の予定**
+- **メモのリマインダー機能**
+- **日付ベースのタスク管理 (`zk task due`)**
+- **自動タグ付け機能**
+- **統計・分析機能 (`zk stats`)**
+
+---
+
+## **インストール方法**
 （インストール方法が決まり次第追加）
 
-## 貢献
-バグ報告や機能提案は Issue にて受け付けています。
+---
 
+## **貢献**
+バグ報告や機能提案は Issue にて受け付けています。
