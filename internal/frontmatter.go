@@ -1,7 +1,9 @@
 package internal
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 
@@ -9,13 +11,16 @@ import (
 )
 
 type FrontMatter struct {
-	ID        string   `yaml:"id"`
-	Title     string   `yaml:"title"`
-	Type      string   `yaml:"type"`
-	Tags      []string `yaml:"tags"`
-	Links     []string `yaml:"links"`
-	CreatedAt string   `yaml:"created_at"`
-	UpdatedAt string   `yaml:"updated_at"`
+	ID         string   `yaml:"id"`
+	Title      string   `yaml:"title"`
+	Type       string   `yaml:"type"`
+	Tags       []string `yaml:"tags"`
+	Links      []string `yaml:"links"`
+	TaskStatus string   `yaml:"task_status"`
+	CreatedAt  string   `yaml:"created_at"`
+	UpdatedAt  string   `yaml:"updated_at"`
+	Archived   bool     `yaml:"archived"`
+	Deleted    bool     `yaml:"deleted"`
 }
 
 func ExtractFrontMatter(content string) (string, error) {
@@ -56,4 +61,20 @@ func UpdateFrontMatter(frontMatter *FrontMatter, body string) string {
 
 	// --- を維持して YAML と本文を結合
 	return fmt.Sprintf("---\n%s---\n\n%s", string(frontMatterBytes), body)
+}
+
+// 💾 **zettel.json を保存**
+func SaveUpdatedJson(zettels []Zettel, config *Config) {
+	updatedJson, err := json.MarshalIndent(zettels, "", "  ")
+	if err != nil {
+		fmt.Println("⚠️ JSON の変換エラー:", err)
+		return
+	}
+
+	err = os.WriteFile(config.ZettelJson, updatedJson, 0644)
+	if err != nil {
+		fmt.Println("⚠️ JSON 書き込みエラー:", err)
+	} else {
+		fmt.Println("✅ JSON 更新完了:", config.ZettelJson)
+	}
 }

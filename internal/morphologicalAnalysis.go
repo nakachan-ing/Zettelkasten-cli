@@ -49,6 +49,77 @@ func ExtractKeywordsMeCab(text string) ([]string, error) {
 	return keywords, nil
 }
 
+// ✍️ **MeCab を使ってキーフレーズを抽出（単語単位ではなくフレーズ単位）**
+func ExtractKeyPhrasesMeCab(text string) ([]string, error) {
+	// ✅ MeCab を実行
+	cmd := exec.Command("mecab")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stdin = strings.NewReader(text)
+
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("❌ MeCab の実行に失敗しました: %v", err)
+	}
+
+	// ✅ **形態素解析結果を取得**
+	lines := strings.Split(out.String(), "\n")
+
+	// ✅ **キーフレーズを抽出**
+	var keyPhrases []string
+	var currentPhrase string
+	for _, line := range lines {
+		parts := strings.Split(line, "\t")
+		if len(parts) < 2 {
+			continue
+		}
+
+		// MeCab の出力から品詞情報を取得
+		features := strings.Split(parts[1], ",")
+		if len(features) > 0 {
+			wordType := features[0]
+
+			// ✅ **名詞または動詞の連続をフレーズとして抽出**
+			if wordType == "名詞" || wordType == "動詞" {
+				if currentPhrase == "" {
+					currentPhrase = parts[0]
+				} else {
+					currentPhrase += parts[0]
+				}
+			} else {
+				// **名詞や動詞の連続が終わったら、フレーズとして追加**
+				if currentPhrase != "" {
+					keyPhrases = append(keyPhrases, currentPhrase)
+					currentPhrase = ""
+				}
+			}
+		}
+	}
+
+	// **最後に残ったフレーズを追加**
+	if currentPhrase != "" {
+		keyPhrases = append(keyPhrases, currentPhrase)
+	}
+
+	// ✅ **重複を削除**
+	uniquePhrases := removeDuplicates(keyPhrases)
+
+	return uniquePhrases, nil
+}
+
+// **重複を削除**
+func removeDuplicates(slice []string) []string {
+	seen := make(map[string]bool)
+	result := []string{}
+
+	for _, str := range slice {
+		if _, exists := seen[str]; !exists {
+			seen[str] = true
+			result = append(result, str)
+		}
+	}
+	return result
+}
+
 // 指定ディレクトリ内のノートを読み込む
 func LoadNotesFromDir(noteDir string) ([]Note, error) {
 	var notes []Note
@@ -166,14 +237,14 @@ func GetNoteKeywords(note Note) map[string]float64 {
 }
 
 // 🔍 **関連ノートを検索**
-func FindRelatedNotes(fromZettel Zettel, zettels []Zettel, threshold float64, tfidfMap map[string]map[string]float64) []string {
-	var relatedIDs []string
+func FindRelatedNotes(fromZettel Zettel, zettels []Zettel, threshold float64, tfidfMap map[string]map[string]float64) []Zettel {
+	var relatedNotes []Zettel
 
 	// ✅ `fromZettel` の TF-IDF を取得
 	fromTFIDF, exists := tfidfMap[fromZettel.NoteID]
 	if !exists {
 		fmt.Println("⚠️ `TF-IDF` データが見つかりません:", fromZettel.NoteID)
-		return relatedIDs
+		return relatedNotes
 	}
 
 	// ✅ 他のノートとの類似度を計算
@@ -191,11 +262,11 @@ func FindRelatedNotes(fromZettel Zettel, zettels []Zettel, threshold float64, tf
 		// コサイン類似度を計算
 		similarity := CosineSimilarity(fromTFIDF, noteTFIDF)
 		if similarity >= threshold {
-			relatedIDs = append(relatedIDs, zettel.NoteID)
+			relatedNotes = append(relatedNotes, zettel)
 		}
 	}
 
-	return relatedIDs
+	return relatedNotes
 }
 
 // ✅ 各 `Zettel` から `TF-IDF` を計算する関数

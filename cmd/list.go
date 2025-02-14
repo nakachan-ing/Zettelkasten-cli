@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jedib0t/go-pretty/text"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/nakachan-ing/Zettelkasten-cli/internal"
 	"github.com/spf13/cobra"
@@ -17,6 +18,8 @@ import (
 
 var listTypes []string
 var noteTags []string
+var trash bool
+var archive bool
 
 const pageSize = 20
 
@@ -38,24 +41,14 @@ to quickly create a Cobra application.`,
 			return
 		}
 
-		retention := time.Duration(config.Backup.Retention) * 24 * time.Hour
-
-		err = internal.CleanupBackups(config.Backup.BackupDir, retention)
+		err = internal.CleanupBackups(config.Backup.BackupDir, time.Duration(config.Backup.Retention)*24*time.Hour)
 		if err != nil {
 			fmt.Printf("Backup cleanup failed: %v\n", err)
 		}
-
+		err = internal.CleanupTrash(config.Trash.TrashDir, time.Duration(config.Trash.Retention)*24*time.Hour)
 		if err != nil {
-			fmt.Println("Error:", err)
-			return
+			fmt.Printf("Trash cleanup failed: %v\n", err)
 		}
-
-		t := table.NewWriter()
-		t.SetOutputMirror(os.Stdout)
-		t.SetStyle(table.StyleRounded) // 罫線を柔らかいスタイルに
-		t.Style().Options.SeparateRows = false
-
-		t.AppendHeader(table.Row{"ID", "Title", "Type", "Tags", "Created", "Updated", "Project", "Links"})
 
 		filteredNotes := []table.Row{}
 
@@ -66,44 +59,63 @@ to quickly create a Cobra application.`,
 
 		for _, zettel := range zettels {
 
-			// --type フィルター
-			typeSet := make(map[string]bool)
-			for _, listType := range listTypes {
-				typeSet[strings.ToLower(listType)] = true
-			}
+			// delete フィルター
+			if trash {
+				if !zettel.Deleted {
+					continue
+				}
+				// archive フィルター
+			} else if archive {
+				if !zettel.Archived {
+					continue
+				}
+			} else {
+				if zettel.Deleted {
+					continue
+				}
+				if zettel.NoteType == "task" {
+					continue
+				}
 
-			// --tag フィルター
-			tagSet := make(map[string]bool)
-			for _, tag := range noteTags {
-				tagSet[strings.ToLower(tag)] = true
-			}
+				// --type フィルター
+				typeSet := make(map[string]bool)
+				for _, listType := range listTypes {
+					typeSet[strings.ToLower(listType)] = true
+				}
 
-			// --type に指定があり、かつノートのタイプがマッチしないならスキップ
-			if len(typeSet) > 0 && !typeSet[strings.ToLower(zettel.NoteType)] {
-				continue
-			}
+				// --tag フィルター
+				tagSet := make(map[string]bool)
+				for _, tag := range noteTags {
+					tagSet[strings.ToLower(tag)] = true
+				}
 
-			// --tag フィルター処理
-			if len(tagSet) > 0 {
-				match := false
-				for _, noteTag := range zettel.Tags {
-					normalizedNoteTag := strings.ToLower(strings.TrimSpace(noteTag))
-					for filterTag := range tagSet {
-						if strings.Contains(normalizedNoteTag, filterTag) { // 部分一致
-							match = true
-							break
+				// --type に指定があり、かつノートのタイプがマッチしないならスキップ
+				if len(typeSet) > 0 && !typeSet[strings.ToLower(zettel.NoteType)] {
+					continue
+				}
+
+				// --tag フィルター処理
+				if len(tagSet) > 0 {
+					match := false
+					for _, noteTag := range zettel.Tags {
+						normalizedNoteTag := strings.ToLower(strings.TrimSpace(noteTag))
+						for filterTag := range tagSet {
+							if strings.Contains(normalizedNoteTag, filterTag) { // 部分一致
+								match = true
+								break
+							}
 						}
 					}
-				}
-				if !match {
-					continue
+					if !match {
+						continue
+					}
 				}
 			}
 
 			// 🔹 `--tag` がない場合でもここに到達するように修正
 			filteredNotes = append(filteredNotes, table.Row{
 				zettel.ID, zettel.Title, zettel.NoteType, zettel.Tags,
-				zettel.CreatedAt, zettel.UpdatedAt, "-", len(zettel.Links),
+				zettel.CreatedAt, zettel.UpdatedAt, len(zettel.Links),
 			})
 		}
 		// ページネーションの処理
@@ -115,6 +127,9 @@ to quickly create a Cobra application.`,
 		reader := bufio.NewReader(os.Stdin)
 		page := 0
 
+		fmt.Println(strings.Repeat("=", 30))
+		fmt.Printf("Zettelkasten: %v notes shown\n", len(filteredNotes))
+		fmt.Println(strings.Repeat("=", 30))
 		for {
 			// ページ範囲を決定
 			start := page * pageSize
@@ -126,11 +141,41 @@ to quickly create a Cobra application.`,
 			// テーブル作成
 			t := table.NewWriter()
 			t.SetOutputMirror(os.Stdout)
-			t.SetStyle(table.StyleRounded)
+			// t.SetStyle(table.StyleRounded)
+			t.SetStyle(table.StyleDouble)
 			t.Style().Options.SeparateRows = false
+			// t.SetStyle(table.StyleColoredBlackOnCyanWhite)
 
-			t.AppendHeader(table.Row{"ID", "Title", "Type", "Tags", "Created", "Updated", "Project", "Links"})
-			t.AppendRows(filteredNotes[start:end])
+			t.AppendHeader(table.Row{
+				text.FgGreen.Sprintf("ID"), text.FgGreen.Sprintf(text.Bold.Sprintf("Title")),
+				text.FgGreen.Sprintf("Type"), text.FgGreen.Sprintf("Tags"),
+				text.FgGreen.Sprintf("Created"), text.FgGreen.Sprintf("Updated"),
+				text.FgGreen.Sprintf("Links"),
+			})
+			// データを追加（Type によって色を変更）
+			for _, row := range filteredNotes[start:end] {
+				noteType := row[2].(string) // Type 列の値
+				typeColored := noteType     // 初期値はそのまま
+
+				// Type の値に応じて色を変更
+				switch noteType {
+				case "permanent":
+					typeColored = text.FgHiBlue.Sprintf(noteType) // 明るい青
+				case "literature":
+					typeColored = text.FgHiYellow.Sprintf(noteType) // 明るい黄色
+				case "fleeting":
+					typeColored = noteType // デフォルト
+				case "index":
+					typeColored = text.FgHiMagenta.Sprintf(noteType) // 明るいマゼンタ
+				case "structure":
+					typeColored = text.FgHiGreen.Sprintf(noteType) // 明るい緑
+				}
+
+				// 色付きの Type を適用して行を追加
+				t.AppendRow(table.Row{
+					row[0], row[1], typeColored, row[3], row[4], row[5], row[6],
+				})
+			}
 			t.Render()
 
 			// 最後のページなら終了
@@ -149,13 +194,6 @@ to quickly create a Cobra application.`,
 
 			page++
 		}
-		// reader := bufio.NewReader(os.Stdin)
-		// page := 0
-
-		// t.AppendRows(filteredNotes)
-
-		// t.Render()
-
 	},
 }
 
@@ -164,4 +202,6 @@ func init() {
 
 	listCmd.Flags().StringSliceVarP(&listTypes, "type", "t", []string{}, "Specify note type")
 	listCmd.Flags().StringSliceVar(&noteTags, "tag", []string{}, "Specify tags")
+	listCmd.Flags().BoolVar(&trash, "trash", false, "Optional")
+	listCmd.Flags().BoolVar(&archive, "archive", false, "Optional")
 }

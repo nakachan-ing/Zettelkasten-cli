@@ -24,16 +24,18 @@ var validTypes = map[string]bool{
 	"fleeting":   true,
 	"literature": true,
 	"permanent":  true,
+	"index":      true,
+	"structure":  true,
 }
 
 func validateNoteType(noteType string) error {
 	if !validTypes[noteType] {
-		return errors.New("invalid note type: must be 'fleeting', 'literature', or 'permanent'")
+		return errors.New("invalid note type: must be 'fleeting', 'literature', 'permanent', 'index' or 'structure'")
 	}
 	return nil
 }
 
-func CreateNewNote(title, noteType string, tags []string, config internal.Config) (string, error) {
+func createNewNote(title, noteType string, tags []string, config internal.Config) (string, internal.Zettel, error) {
 	t := time.Now()
 	noteId := fmt.Sprintf("%d%02d%02d%02d%02d%02d",
 		t.Year(), t.Month(), t.Day(),
@@ -49,13 +51,13 @@ func CreateNewNote(title, noteType string, tags []string, config internal.Config
 		Type:      noteType,
 		Tags:      tags,
 		CreatedAt: fmt.Sprintf("%v", createdAt),
-		UpdatedAt: "",
+		UpdatedAt: fmt.Sprintf("%v", createdAt),
 	}
 
 	// YAML 形式に変換
 	frontMatterBytes, err := yaml.Marshal(frontMatter)
 	if err != nil {
-		return "", fmt.Errorf("⚠️ YAML 変換エラー: %v", err)
+		return "", internal.Zettel{}, fmt.Errorf("⚠️ YAML 変換エラー: %v", err)
 	}
 
 	// Markdown ファイルの内容を作成
@@ -65,7 +67,7 @@ func CreateNewNote(title, noteType string, tags []string, config internal.Config
 	filePath := fmt.Sprintf("%s/%s.md", config.NoteDir, noteId)
 	err = os.WriteFile(filePath, []byte(content), 0644)
 	if err != nil {
-		return "", fmt.Errorf("⚠️ ファイル作成エラー: %v", err)
+		return "", internal.Zettel{}, fmt.Errorf("⚠️ ファイル作成エラー: %v", err)
 	}
 
 	// JSONファイルに書き込み
@@ -76,17 +78,17 @@ func CreateNewNote(title, noteType string, tags []string, config internal.Config
 		Title:     fmt.Sprintf("%v", title),
 		Tags:      tags,
 		CreatedAt: fmt.Sprintf("%v", createdAt),
-		UpdatedAt: "",
+		UpdatedAt: fmt.Sprintf("%v", createdAt),
 		NotePath:  filePath,
 	}
 
 	err = internal.InsertZettelToJson(zettel, config)
 	if err != nil {
-		return "", fmt.Errorf("⚠️ JSON書き込みエラー: %v", err)
+		return "", internal.Zettel{}, fmt.Errorf("⚠️ JSON書き込みエラー: %v", err)
 	}
 
 	fmt.Printf("✅ ノート %s を作成しました。\n", filePath)
-	return filePath, nil
+	return filePath, zettel, nil
 
 }
 
@@ -121,23 +123,26 @@ to quickly create a Cobra application.`,
 			return
 		}
 
-		retention := time.Duration(config.Backup.Retention) * 24 * time.Hour
-
-		err = internal.CleanupBackups(config.Backup.BackupDir, retention)
+		err = internal.CleanupBackups(config.Backup.BackupDir, time.Duration(config.Backup.Retention)*24*time.Hour)
 		if err != nil {
 			fmt.Printf("Backup cleanup failed: %v\n", err)
 		}
+		err = internal.CleanupTrash(config.Trash.TrashDir, time.Duration(config.Trash.Retention)*24*time.Hour)
+		if err != nil {
+			fmt.Printf("Trash cleanup failed: %v\n", err)
+		}
 
-		newZettel, err := CreateNewNote(title, noteType, tags, *config)
+		newZettelStr, _, err := createNewNote(title, noteType, tags, *config)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		fmt.Printf("Opening %q (Title: %q)...\n", newZettel, title)
+		// fmt.Println(newZettel)
+		fmt.Printf("Opening %q (Title: %q)...\n", newZettelStr, title)
 
 		time.Sleep(2 * time.Second)
 
-		c := exec.Command(config.Editor, newZettel)
+		c := exec.Command(config.Editor, newZettelStr)
 		c.Stdin = os.Stdin
 		c.Stdout = os.Stdout
 		c.Stderr = os.Stderr
@@ -145,7 +150,6 @@ to quickly create a Cobra application.`,
 		if err != nil {
 			log.Fatal(err)
 		}
-
 	},
 }
 

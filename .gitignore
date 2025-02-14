@@ -2,6 +2,7 @@
 /Zettelkasten-cli
 *.exe
 *.out
+zk
 
 # 依存関係キャッシュ
 /vendor/

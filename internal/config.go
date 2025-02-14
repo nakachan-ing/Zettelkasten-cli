@@ -14,11 +14,17 @@ type Config struct {
 	NoteDir    string `yaml:"note_dir"`
 	Editor     string `yaml:"editor"`
 	ZettelJson string `yaml:"zettel_json"`
+	ArchiveDir string `yaml:"archive_dir"`
 	Backup     struct {
 		Enable    bool   `yaml:"enable"`
 		Frequency int    `yaml:"frequency"`
 		Retention int    `yaml:"retention"`
 		BackupDir string `yaml:"backup_dir"`
+	}
+	Trash struct {
+		Frequency int    `yaml:"frequency"`
+		Retention int    `yaml:"retention"`
+		TrashDir  string `yaml:"trash_dir"`
 	}
 }
 
@@ -84,6 +90,7 @@ func LoadConfig() (*Config, error) {
 	config.NoteDir = expandHomeDir(config.NoteDir)
 	config.Backup.BackupDir = expandHomeDir(config.Backup.BackupDir)
 	config.ZettelJson = expandHomeDir(config.ZettelJson)
+	config.Trash.TrashDir = expandHomeDir(config.Trash.TrashDir)
 
 	return &config, nil
 }

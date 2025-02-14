@@ -6,7 +6,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
@@ -18,13 +17,6 @@ import (
 
 // var noteId string
 var meta bool
-
-func extractBody(content string) (string, error) {
-	re := regexp.MustCompile(`(?s)^---\n(.*?)\n---\n`)
-	body := re.ReplaceAllString(content, "") // フロントマター部分を削除
-	body = strings.TrimSpace(body)           // 余分な空白や改行を除去
-	return body, nil
-}
 
 // showCmd represents the show command
 var showCmd = &cobra.Command{
@@ -50,11 +42,13 @@ to quickly create a Cobra application.`,
 			return
 		}
 
-		retention := time.Duration(config.Backup.Retention) * 24 * time.Hour
-
-		err = internal.CleanupBackups(config.Backup.BackupDir, retention)
+		err = internal.CleanupBackups(config.Backup.BackupDir, time.Duration(config.Backup.Retention)*24*time.Hour)
 		if err != nil {
 			fmt.Printf("Backup cleanup failed: %v\n", err)
+		}
+		err = internal.CleanupTrash(config.Trash.TrashDir, time.Duration(config.Trash.Retention)*24*time.Hour)
+		if err != nil {
+			fmt.Printf("Trash cleanup failed: %v\n", err)
 		}
 
 		zettels, err := internal.LoadJson(*config)

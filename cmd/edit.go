@@ -68,11 +68,13 @@ to quickly create a Cobra application.`,
 			return
 		}
 
-		retention := time.Duration(config.Backup.Retention) * 24 * time.Hour
-
-		err = internal.CleanupBackups(config.Backup.BackupDir, retention)
+		err = internal.CleanupBackups(config.Backup.BackupDir, time.Duration(config.Backup.Retention)*24*time.Hour)
 		if err != nil {
 			fmt.Printf("Backup cleanup failed: %v\n", err)
+		}
+		err = internal.CleanupTrash(config.Trash.TrashDir, time.Duration(config.Trash.Retention)*24*time.Hour)
+		if err != nil {
+			fmt.Printf("Trash cleanup failed: %v\n", err)
 		}
 
 		dir := config.NoteDir
@@ -120,6 +122,8 @@ to quickly create a Cobra application.`,
 					zettels[i].Title = frontMatter.Title
 					zettels[i].NoteType = frontMatter.Type
 					zettels[i].Tags = frontMatter.Tags
+					zettels[i].Links = frontMatter.Links
+					zettels[i].TaskStatus = frontMatter.TaskStatus
 					zettels[i].UpdatedAt = frontMatter.UpdatedAt
 
 					// JSON を更新
