@@ -62,17 +62,12 @@ zk link [link元id] [link先id]
 不要なメモを削除します。削除されたメモはゴミ箱 (`Trash/`) に移動され、`zk list --trash` で一覧表示できます。
 
 ```sh
-zk delete 20250212142531
-```
-
-**完全削除したい場合（復元不可）**
-```sh
-zk delete 20250212142531 --permanent
+zk delete [id]
 ```
 
 **削除したメモを復元**
 ```sh
-zk restore 20250212142531
+zk restore [id]
 ```
 
 ---
@@ -82,12 +77,12 @@ zk restore 20250212142531
 アーカイブされたメモは `archive/` フォルダに移動し、`zk list --archive` で一覧表示できます。
 
 ```sh
-zk archive 20250212142531
+zk archive [id]
 ```
 
 **アーカイブされたメモを復元**
 ```sh
-zk restore 20250212142531 --archive
+zk restore [id]
 ```
 
 ---
@@ -118,7 +113,7 @@ zk project new "My DevOps Learning"
 
 **プロジェクトにメモを追加**
 ```sh
-zk project add id "My DevOps Learning"
+zk project add [id] "My DevOps Learning"
 ```
 
 **プロジェクトのメモを一覧表示**
