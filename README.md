@@ -75,6 +75,115 @@ scoop install fzf
 
 ---
 
+## 📌 `zk` の設定 (`config.yml`)
+
+`zk` は **設定ファイル (`config.yml`)** を使用して、メモの保存場所・エディタ・バックアップなどをカスタマイズできます。  
+デフォルトでは、`~/.config/zettelkasten-cli/config.yml` に設定ファイルを作成し、以下のオプションを変更できます。
+
+---
+
+### 📝 **1. ノートの保存ディレクトリ (`note_dir`)**
+メモを保存するディレクトリを指定します。
+
+```yaml
+note_dir: "~/Library/Mobile Documents/com~apple~CloudDocs/Zettelkasten"
+```
+📌 **例:**
+- Mac で iCloud Drive を使用する場合 → `~/Library/Mobile Documents/com~apple~CloudDocs/Zettelkasten`
+- 通常のローカルディレクトリを使用する場合 → `~/Documents/Zettelkasten`
+
+---
+
+### ✏️ **2. 使用するエディタ (`editor`)**
+メモを開く際に使用するエディタを指定できます。
+
+```yaml
+editor: "nvim"
+```
+📌 **例:**
+- `vim`, `nvim`, `nano`, `code` (VSCode) など好きなエディタを指定可能
+- VSCode を使う場合 → `editor: "code"`
+
+---
+
+### 📂 **3. `zettel.json` の保存場所**
+Zettelkasten のメタデータ (`zettel.json`) を管理する場所を指定します。
+
+```yaml
+zettel_json: "~/.config/zettelkasten-cli/zettel.json"
+```
+📌 **このファイルには以下の情報が保存されます：**
+- 各メモの `ID`, `タイトル`, `タグ`, `作成日`, `リンク` など
+- `zk sync` を実行すると、`zettel.json` が `note_dir` 内のファイルと同期されます。
+
+---
+
+### 🗄️ **4. アーカイブディレクトリ (`archive_dir`)**
+不要になったメモを **削除せずにアーカイブ** する場合の保存先を指定します。
+
+```yaml
+archive_dir: "~/Library/Mobile Documents/com~apple~CloudDocs/Zettelkasten/archive"
+```
+📌 **アーカイブとは？**
+- `zk archive <id>` を実行すると、`archive_dir` に移動します。
+- `zk list --archive` でアーカイブされたメモを一覧表示できます。
+- `zk restore <id>` で復元できます。
+
+---
+
+### 🔄 **5. バックアップ (`backup`)**
+メモのバックアップを自動的に作成する設定です。
+
+```yaml
+backup:
+  enable: true        # バックアップを有効にする
+  frequency: 5        # 5分ごとにバックアップを作成
+  retention: 7        # 過去7日分のバックアップを保持
+  backup_dir: "~/Library/Mobile Documents/com~apple~CloudDocs/Zettelkasten/.backup"
+```
+📌 **バックアップの動作**：
+- `backup.enable: true` でバックアップを有効化。
+- `frequency: 5` → **5分ごとに `note_dir` のスナップショットを `backup_dir` に保存**。
+- `retention: 7` → **バックアップは過去7日分を保持し、古いものは自動削除**。
+
+
+---
+
+### 🗑️ **6. ゴミ箱 (`trash`)**
+削除されたメモの一時保存 (`Trash/`) を設定します。
+
+```yaml
+trash:
+  frequency: 5       # 5分ごとにゴミ箱のクリーンアップを実行
+  retention: 30      # 30日経過したゴミ箱のメモを自動削除
+  trash_dir: "~/.config/zettelkasten-cli/.Trash"
+```
+📌 **ゴミ箱の動作**：
+- `zk delete <id>` を実行すると、`trash_dir` に移動。
+- `zk restore <id>` で復元可能。
+- `retention: 30` なら **30日経過したメモは完全削除** される。
+
+✅ **削除済みのメモを一覧表示**
+```sh
+zk list --trash
+```
+
+---
+
+## **📌 まとめ**
+| 設定項目 | 説明 |
+|----------|------|
+| `note_dir` | メモを保存するディレクトリ |
+| `editor` | 使用するエディタ |
+| `zettel_json` | メモのメタデータ (`zettel.json`) の保存先 |
+| `archive_dir` | アーカイブされたメモの保存先 |
+| `backup` | メモのバックアップ設定（有効化・頻度・保持期間・保存先） |
+| `trash` | 削除されたメモの一時保存設定（ゴミ箱の保持期間・削除頻度） |
+
+この `config.yml` を設定すれば、自分のワークフローに最適な環境で `zk` を使えます！ 🚀
+
+
+
 ## 現在実装済みの機能
 
 ### 1. `zk new`
