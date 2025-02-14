@@ -47,16 +47,11 @@ to quickly create a Cobra application.`,
 			return
 		}
 
-		retention := time.Duration(config.Backup.Retention) * 24 * time.Hour
-
-		err = internal.CleanupBackups(config.Backup.BackupDir, retention)
+		err = internal.CleanupBackups(config.Backup.BackupDir, time.Duration(config.Backup.Retention)*24*time.Hour)
 		if err != nil {
 			fmt.Printf("Backup cleanup failed: %v\n", err)
 		}
-
-		retention = time.Duration(config.Trash.Retention) * 24 * time.Hour
-
-		err = internal.CleanupTrash(config.Trash.TrashDir, retention)
+		err = internal.CleanupTrash(config.Trash.TrashDir, time.Duration(config.Trash.Retention)*24*time.Hour)
 		if err != nil {
 			fmt.Printf("Trash cleanup failed: %v\n", err)
 		}
