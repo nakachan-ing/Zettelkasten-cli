@@ -3,6 +3,8 @@
 *.exe
 *.out
 zk
+zk-mac
+zk-linux
 
 # 依存関係キャッシュ
 /vendor/

@@ -15,8 +15,8 @@ type LockFile struct {
 	TimeStamp string `yaml:"timestamp"`
 }
 
-func CreateLockFile(lockFileName string) {
-	fmt.Println(lockFileName)
+func CreateLockFile(lockFileName string) error {
+	fmt.Println("Creating lock file:", lockFileName)
 
 	t := time.Now()
 	id := fmt.Sprintf("%d%02d%02d%02d%02d%02d",
@@ -30,9 +30,8 @@ func CreateLockFile(lockFileName string) {
 	if user == "" {
 		user = os.Getenv("USERNAME")
 	}
-
 	if user == "" {
-		fmt.Println("ユーザー名を取得できませんでした")
+		return fmt.Errorf("failed to retrieve the username")
 	}
 
 	pid := os.Getpid()
@@ -41,12 +40,13 @@ func CreateLockFile(lockFileName string) {
 
 	info, err := yaml.Marshal(&lockFile)
 	if err != nil {
-		fmt.Println(err)
+		return fmt.Errorf("failed to marshal YAML: %w", err)
 	}
 
-	err = os.WriteFile(lockFileName, []byte(info), 0644)
+	err = os.WriteFile(lockFileName, info, 0644)
 	if err != nil {
-		fmt.Println(err)
+		return fmt.Errorf("failed to write lock file: %w", err)
 	}
 
+	return nil
 }

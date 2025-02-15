@@ -1,10 +1,6 @@
-/*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -18,9 +14,7 @@ import (
 )
 
 func createNewProject(projectName string, tags []string, config internal.Config) (string, internal.Zettel, error) {
-	tagName := strings.Replace(projectName, " ", "_", -1)
-	fmt.Println(tagName)
-
+	tagName := strings.ReplaceAll(projectName, " ", "_")
 	tags = append(tags, fmt.Sprintf("project:%v", tagName))
 
 	t := time.Now()
@@ -31,198 +25,154 @@ func createNewProject(projectName string, tags []string, config internal.Config)
 		t.Year(), t.Month(), t.Day(),
 		t.Hour(), t.Minute(), t.Second())
 
-	// 統一フォーマットでフロントマターを作成
 	frontMatter := internal.FrontMatter{
-		ID:        fmt.Sprintf("%v", noteId),
-		Title:     fmt.Sprintf("%v", projectName),
+		ID:        noteId,
+		Title:     projectName,
 		Type:      "project",
 		Tags:      tags,
-		CreatedAt: fmt.Sprintf("%v", createdAt),
-		UpdatedAt: fmt.Sprintf("%v", createdAt),
+		CreatedAt: createdAt,
+		UpdatedAt: createdAt,
 	}
 
-	// YAML 形式に変換
 	frontMatterBytes, err := yaml.Marshal(frontMatter)
 	if err != nil {
-		return "", internal.Zettel{}, fmt.Errorf("⚠️ YAML 変換エラー: %v", err)
+		return "", internal.Zettel{}, fmt.Errorf("❌ Failed to convert to YAML: %w", err)
 	}
 
-	// Markdown ファイルの内容を作成
 	content := fmt.Sprintf("---\n%s---\n\n## %s", string(frontMatterBytes), frontMatter.Title)
 
-	// ファイルを作成
 	filePath := fmt.Sprintf("%s/%s.md", config.NoteDir, noteId)
 	err = os.WriteFile(filePath, []byte(content), 0644)
 	if err != nil {
-		return "", internal.Zettel{}, fmt.Errorf("⚠️ ファイル作成エラー: %v", err)
+		return "", internal.Zettel{}, fmt.Errorf("❌ Failed to create file: %w", err)
 	}
 
-	// JSONファイルに書き込み
 	zettel := internal.Zettel{
-		ID:        "",
-		NoteID:    fmt.Sprintf("%v", noteId),
+		NoteID:    noteId,
 		NoteType:  "project",
-		Title:     fmt.Sprintf("%v", projectName),
+		Title:     projectName,
 		Tags:      tags,
-		CreatedAt: fmt.Sprintf("%v", createdAt),
-		UpdatedAt: fmt.Sprintf("%v", createdAt),
+		CreatedAt: createdAt,
+		UpdatedAt: createdAt,
 		NotePath:  filePath,
 	}
 
 	err = internal.InsertZettelToJson(zettel, config)
 	if err != nil {
-		return "", internal.Zettel{}, fmt.Errorf("⚠️ JSON書き込みエラー: %v", err)
+		return "", internal.Zettel{}, fmt.Errorf("❌ Failed to write to JSON: %w", err)
 	}
 
-	fmt.Printf("✅ ノート %s を作成しました。\n", filePath)
+	log.Printf("✅ Note created: %s", filePath)
 	return filePath, zettel, nil
-
 }
 
-// projectCmd represents the project command
 var projectCmd = &cobra.Command{
-	Use:   "project",
-	Short: "Manage projects",
+	Use:     "project",
+	Short:   "Manage projects",
+	Aliases: []string{"p"},
 }
 
-// `zk project new [title]` コマンド
 var projectNewCmd = &cobra.Command{
-	Use:   "new [title]",
-	Short: "Create a new project",
-	Args:  cobra.ExactArgs(1),
+	Use:     "new [title]",
+	Short:   "Create a new project",
+	Args:    cobra.ExactArgs(1),
+	Aliases: []string{"n"},
 	Run: func(cmd *cobra.Command, args []string) {
-		var projectName string
-		if len(args) > 0 {
-			projectName = args[0]
-		} else {
-			fmt.Println("❌ タイトルを指定してください")
-			os.Exit(1)
-		}
+		projectName := args[0]
 
 		config, err := internal.LoadConfig()
 		if err != nil {
-			fmt.Println("Error:", err)
+			log.Printf("❌ Error loading config: %v", err)
 			return
-		}
-
-		err = internal.CleanupBackups(config.Backup.BackupDir, time.Duration(config.Backup.Retention)*24*time.Hour)
-		if err != nil {
-			fmt.Printf("Backup cleanup failed: %v\n", err)
-		}
-		err = internal.CleanupTrash(config.Trash.TrashDir, time.Duration(config.Trash.Retention)*24*time.Hour)
-		if err != nil {
-			fmt.Printf("Trash cleanup failed: %v\n", err)
 		}
 
 		newProjectStr, _, err := createNewProject(projectName, tags, *config)
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("❌ Failed to create project: %v", err)
+			return
 		}
 
-		// fmt.Println(newZettel)
-		fmt.Printf("Opening %q (Title: %q)...\n", newProjectStr, projectName)
-
+		log.Printf("Opening %q (Title: %q)...", newProjectStr, projectName)
 		time.Sleep(2 * time.Second)
 
 		c := exec.Command(config.Editor, newProjectStr)
 		c.Stdin = os.Stdin
 		c.Stdout = os.Stdout
 		c.Stderr = os.Stderr
-		err = c.Run()
-		if err != nil {
-			log.Fatal(err)
+		if err := c.Run(); err != nil {
+			log.Printf("❌ Failed to open editor: %v", err)
 		}
 	},
 }
 
-// `zk project add [noteid] [project]` コマンド
 var projectAddCmd = &cobra.Command{
-	Use:   "add [noteid] [project]",
-	Short: "Add a note to a project",
-	Args:  cobra.ExactArgs(2),
+	Use:     "add [noteid] [project]",
+	Short:   "Add a note to a project",
+	Args:    cobra.ExactArgs(2),
+	Aliases: []string{"a"},
 	Run: func(cmd *cobra.Command, args []string) {
 		noteID := args[0]
 		projectName := args[1]
+
 		config, err := internal.LoadConfig()
 		if err != nil {
-			fmt.Println("Error:", err)
+			log.Printf("❌ Error loading config: %v", err)
 			return
-		}
-
-		err = internal.CleanupBackups(config.Backup.BackupDir, time.Duration(config.Backup.Retention)*24*time.Hour)
-		if err != nil {
-			fmt.Printf("Backup cleanup failed: %v\n", err)
-		}
-		err = internal.CleanupTrash(config.Trash.TrashDir, time.Duration(config.Trash.Retention)*24*time.Hour)
-		if err != nil {
-			fmt.Printf("Trash cleanup failed: %v\n", err)
 		}
 
 		zettels, err := internal.LoadJson(*config)
 		if err != nil {
-			fmt.Println("Error:", err)
+			log.Printf("❌ Error loading JSON: %v", err)
+			return
 		}
 
 		for i := range zettels {
 			if noteID == zettels[i].ID {
 				noteByte, err := os.ReadFile(zettels[i].NotePath)
 				if err != nil {
-					fmt.Println("Error:", err)
+					log.Printf("❌ Error reading note file: %v", err)
 					return
 				}
 
-				// マークダウンのフロントマター部分にproject:title をtagsに追加して更新したい
 				frontMatter, body, err := internal.ParseFrontMatter(string(noteByte))
 				if err != nil {
-					fmt.Println("5Error:", err)
-					os.Exit(1)
+					log.Printf("❌ Error parsing front matter: %v", err)
+					return
 				}
 
-				projectTag := fmt.Sprintf("project:%s", strings.Replace(projectName, " ", "_", -1))
-				found := false
-
-				for _, tag := range frontMatter.Tags {
-					if tag == projectTag {
-						found = true
-						break
-					}
-				}
-
-				if !found {
+				projectTag := fmt.Sprintf("project:%s", strings.ReplaceAll(projectName, " ", "_"))
+				if !contains(frontMatter.Tags, projectTag) {
 					frontMatter.Tags = append(frontMatter.Tags, projectTag)
 				}
 
 				updatedMarkdown := internal.UpdateFrontMatter(&frontMatter, body)
 
-				// ノートを上書き保存
 				err = os.WriteFile(zettels[i].NotePath, []byte(updatedMarkdown), 0644)
 				if err != nil {
-					fmt.Println("Error writing updated note:", err)
+					log.Printf("❌ Error writing updated note: %v", err)
 					return
 				}
-				// JSON データを更新
+
 				zettels[i].Tags = frontMatter.Tags
-				updatedJson, err := json.MarshalIndent(zettels, "", "  ")
-				if err != nil {
-					fmt.Println("Error converting JSON:", err)
+				if err := internal.SaveUpdatedJson(zettels, config); err != nil {
+					log.Printf("❌ Error updating JSON file: %v", err)
 					return
 				}
 
-				// `zettel.json` に書き込み
-				err = os.WriteFile(config.ZettelJson, updatedJson, 0644)
-				if err != nil {
-					fmt.Println("Error writing JSON:", err)
-					return
-				}
-
-				fmt.Println("✅ ノートと JSON の更新完了:", zettels[i].NotePath)
+				log.Printf("✅ Note and JSON updated: %s", zettels[i].NotePath)
 				break
-
 			}
-
 		}
-
 	},
+}
+
+func contains(slice []string, item string) bool {
+	for _, val := range slice {
+		if val == item {
+			return true
+		}
+	}
+	return false
 }
 
 func init() {

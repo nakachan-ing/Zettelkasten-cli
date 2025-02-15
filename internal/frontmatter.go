@@ -3,8 +3,8 @@ package internal
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
-	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -23,58 +23,55 @@ type FrontMatter struct {
 	Deleted    bool     `yaml:"deleted"`
 }
 
-func ExtractFrontMatter(content string) (string, error) {
-	re := regexp.MustCompile(`(?s)^---\n(.*?)\n---\n`)
-	matches := re.FindStringSubmatch(content)
-	if len(matches) < 2 {
-		return "", fmt.Errorf("Front matter not found")
-	}
-	return matches[1], nil
-}
-
+// Parse front matter from note content
 func ParseFrontMatter(content string) (FrontMatter, string, error) {
 	if !strings.HasPrefix(content, "---") {
-		return FrontMatter{}, content, fmt.Errorf("フロントマターが見つかりません")
+		return FrontMatter{}, content, fmt.Errorf("❌ Front matter not found")
 	}
 
 	parts := strings.SplitN(content, "---", 3)
 	if len(parts) < 3 {
-		return FrontMatter{}, content, fmt.Errorf("フロントマターの形式が正しくありません")
+		return FrontMatter{}, content, fmt.Errorf("❌ Invalid front matter format")
 	}
 
 	frontMatterStr := strings.TrimSpace(parts[1])
 	body := strings.TrimSpace(parts[2])
 
-	// YAML をパース
+	// Parse YAML
 	var frontMatter FrontMatter
 	err := yaml.Unmarshal([]byte(frontMatterStr), &frontMatter)
 	if err != nil {
-		return FrontMatter{}, content, err
+		return FrontMatter{}, content, fmt.Errorf("❌ Failed to parse front matter: %w", err)
 	}
 
 	return frontMatter, body, nil
 }
 
+// Update front matter in note content
 func UpdateFrontMatter(frontMatter *FrontMatter, body string) string {
-	// YAML に再変換
-	frontMatterBytes, _ := yaml.Marshal(frontMatter)
+	// Convert to YAML
+	frontMatterBytes, err := yaml.Marshal(frontMatter)
+	if err != nil {
+		log.Printf("❌ Failed to convert front matter to YAML: %v", err)
+		return body
+	}
 
-	// --- を維持して YAML と本文を結合
+	// Preserve `---` and merge YAML with body
 	return fmt.Sprintf("---\n%s---\n\n%s", string(frontMatterBytes), body)
 }
 
-// 💾 **zettel.json を保存**
-func SaveUpdatedJson(zettels []Zettel, config *Config) {
+// Save updated JSON to `zettel.json`
+func SaveUpdatedJson(zettels []Zettel, config *Config) error {
 	updatedJson, err := json.MarshalIndent(zettels, "", "  ")
 	if err != nil {
-		fmt.Println("⚠️ JSON の変換エラー:", err)
-		return
+		return fmt.Errorf("❌ Failed to convert to JSON: %w", err)
 	}
 
 	err = os.WriteFile(config.ZettelJson, updatedJson, 0644)
 	if err != nil {
-		fmt.Println("⚠️ JSON 書き込みエラー:", err)
-	} else {
-		fmt.Println("✅ JSON 更新完了:", config.ZettelJson)
+		return fmt.Errorf("❌ Failed to write JSON file: %w", err)
 	}
+
+	log.Printf("✅ Successfully updated JSON file: %s", config.ZettelJson)
+	return nil
 }

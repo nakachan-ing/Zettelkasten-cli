@@ -1,10 +1,7 @@
-/*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
-	"errors"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -16,7 +13,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// var noteTitle string
 var noteType string
 var tags []string
 
@@ -30,7 +26,7 @@ var validTypes = map[string]bool{
 
 func validateNoteType(noteType string) error {
 	if !validTypes[noteType] {
-		return errors.New("invalid note type: must be 'fleeting', 'literature', 'permanent', 'index' or 'structure'")
+		return fmt.Errorf("invalid note type: must be 'fleeting', 'literature', 'permanent', 'index' or 'structure'")
 	}
 	return nil
 }
@@ -44,111 +40,158 @@ func createNewNote(title, noteType string, tags []string, config internal.Config
 		t.Year(), t.Month(), t.Day(),
 		t.Hour(), t.Minute(), t.Second())
 
-	// 統一フォーマットでフロントマターを作成
+	// Create front matter
 	frontMatter := internal.FrontMatter{
-		ID:        fmt.Sprintf("%v", noteId),
-		Title:     fmt.Sprintf("%v", title),
+		ID:        noteId,
+		Title:     title,
 		Type:      noteType,
 		Tags:      tags,
-		CreatedAt: fmt.Sprintf("%v", createdAt),
-		UpdatedAt: fmt.Sprintf("%v", createdAt),
+		CreatedAt: createdAt,
+		UpdatedAt: createdAt,
 	}
 
-	// YAML 形式に変換
+	// Convert to YAML format
 	frontMatterBytes, err := yaml.Marshal(frontMatter)
 	if err != nil {
-		return "", internal.Zettel{}, fmt.Errorf("⚠️ YAML 変換エラー: %v", err)
+		return "", internal.Zettel{}, fmt.Errorf("failed to convert to YAML: %w", err)
 	}
 
-	// Markdown ファイルの内容を作成
+	// Create Markdown content
 	content := fmt.Sprintf("---\n%s---\n\n## %s", string(frontMatterBytes), frontMatter.Title)
 
-	// ファイルを作成
+	// Write to file
 	filePath := fmt.Sprintf("%s/%s.md", config.NoteDir, noteId)
 	err = os.WriteFile(filePath, []byte(content), 0644)
 	if err != nil {
-		return "", internal.Zettel{}, fmt.Errorf("⚠️ ファイル作成エラー: %v", err)
+		return "", internal.Zettel{}, fmt.Errorf("failed to create note file (%s): %w", filePath, err)
 	}
 
-	// JSONファイルに書き込み
+	// Write to JSON file
 	zettel := internal.Zettel{
 		ID:        "",
-		NoteID:    fmt.Sprintf("%v", noteId),
+		NoteID:    noteId,
 		NoteType:  noteType,
-		Title:     fmt.Sprintf("%v", title),
+		Title:     title,
 		Tags:      tags,
-		CreatedAt: fmt.Sprintf("%v", createdAt),
-		UpdatedAt: fmt.Sprintf("%v", createdAt),
+		CreatedAt: createdAt,
+		UpdatedAt: createdAt,
 		NotePath:  filePath,
 	}
 
 	err = internal.InsertZettelToJson(zettel, config)
 	if err != nil {
-		return "", internal.Zettel{}, fmt.Errorf("⚠️ JSON書き込みエラー: %v", err)
+		return "", internal.Zettel{}, fmt.Errorf("failed to write to JSON file: %w", err)
 	}
 
-	fmt.Printf("✅ ノート %s を作成しました。\n", filePath)
+	fmt.Printf("✅ Note %s has been created successfully.\n", filePath)
 	return filePath, zettel, nil
-
 }
 
-// newCmd represents the new command
+// `newCmd` represents the new command
 var newCmd = &cobra.Command{
-	Use:   "new",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Use:     "new [title]",
+	Short:   "Create a new note",
+	Args:    cobra.ExactArgs(1),
+	Aliases: []string{"n"},
 	Run: func(cmd *cobra.Command, args []string) {
-		var title string
-		if len(args) > 0 {
-			title = args[0]
-		} else {
-			fmt.Println("❌ タイトルを指定してください")
-			os.Exit(1)
-		}
+		title := args[0]
 
 		if err := validateNoteType(noteType); err != nil {
-			// fmt.Println(noteType)
-			fmt.Println("Error:", err)
+			log.Printf("❌ Error: %v", err)
 			os.Exit(1)
 		}
 
 		config, err := internal.LoadConfig()
 		if err != nil {
-			fmt.Println("Error:", err)
-			return
+			log.Printf("❌ Error loading config: %v", err)
+			os.Exit(1)
 		}
 
-		err = internal.CleanupBackups(config.Backup.BackupDir, time.Duration(config.Backup.Retention)*24*time.Hour)
-		if err != nil {
-			fmt.Printf("Backup cleanup failed: %v\n", err)
+		// Perform cleanup tasks
+		if err := internal.CleanupBackups(config.Backup.BackupDir, time.Duration(config.Backup.Retention)*24*time.Hour); err != nil {
+			log.Printf("⚠️ Backup cleanup failed: %v", err)
 		}
-		err = internal.CleanupTrash(config.Trash.TrashDir, time.Duration(config.Trash.Retention)*24*time.Hour)
-		if err != nil {
-			fmt.Printf("Trash cleanup failed: %v\n", err)
-		}
-
-		newZettelStr, _, err := createNewNote(title, noteType, tags, *config)
-		if err != nil {
-			log.Fatal(err)
+		if err := internal.CleanupTrash(config.Trash.TrashDir, time.Duration(config.Trash.Retention)*24*time.Hour); err != nil {
+			log.Printf("⚠️ Trash cleanup failed: %v", err)
 		}
 
-		// fmt.Println(newZettel)
+		// Create a new note
+		newZettelStr, newZettel, err := createNewNote(title, noteType, tags, *config)
+		if err != nil {
+			log.Printf("❌ Failed to create note: %v", err)
+			os.Exit(1)
+		}
+
 		fmt.Printf("Opening %q (Title: %q)...\n", newZettelStr, title)
 
 		time.Sleep(2 * time.Second)
 
+		// Open the editor
 		c := exec.Command(config.Editor, newZettelStr)
 		c.Stdin = os.Stdin
 		c.Stdout = os.Stdout
 		c.Stderr = os.Stderr
 		err = c.Run()
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("❌ Failed to open editor: %v", err)
+			os.Exit(1)
+		}
+
+		// Load JSON data
+		zettels, err := internal.LoadJson(*config)
+		if err != nil {
+			log.Printf("❌ Error loading notes from JSON: %v", err)
+			os.Exit(1)
+		}
+
+		found := false
+		for i := range zettels {
+			if newZettel.NoteID == zettels[i].NoteID {
+				found = true
+
+				// Read updated note content
+				updatedContent, err := os.ReadFile(zettels[i].NotePath)
+				if err != nil {
+					log.Printf("❌ Failed to read updated note file: %v", err)
+					os.Exit(1)
+				}
+
+				// Parse front matter
+				frontMatter, _, err := internal.ParseFrontMatter(string(updatedContent))
+				if err != nil {
+					log.Printf("❌ Error parsing front matter: %v", err)
+					os.Exit(1)
+				}
+
+				// Update note metadata
+				zettels[i].Title = frontMatter.Title
+				zettels[i].NoteType = frontMatter.Type
+				zettels[i].Tags = frontMatter.Tags
+				zettels[i].Links = frontMatter.Links
+				zettels[i].TaskStatus = frontMatter.TaskStatus
+				zettels[i].UpdatedAt = frontMatter.UpdatedAt
+
+				// Convert to JSON
+				updatedJson, err := json.MarshalIndent(zettels, "", "  ")
+				if err != nil {
+					log.Printf("❌ Failed to convert updated notes to JSON: %v", err)
+					os.Exit(1)
+				}
+
+				// Write back to `zettel.json`
+				if err := os.WriteFile(config.ZettelJson, updatedJson, 0644); err != nil {
+					log.Printf("❌ Failed to write updated notes to JSON file: %v", err)
+					os.Exit(1)
+				}
+
+				fmt.Println("✅ Note metadata updated successfully:", config.ZettelJson)
+				break
+			}
+		}
+
+		if !found {
+			log.Printf("❌ Note with ID %s not found", newZettel.NoteID)
+			os.Exit(1)
 		}
 	},
 }
@@ -157,5 +200,4 @@ func init() {
 	rootCmd.AddCommand(newCmd)
 	newCmd.Flags().StringVarP(&noteType, "type", "t", "fleeting", "Specify new note type")
 	newCmd.Flags().StringSliceVar(&tags, "tag", []string{}, "Specify tags")
-
 }

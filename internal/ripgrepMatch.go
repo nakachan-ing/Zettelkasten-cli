@@ -3,6 +3,7 @@ package internal
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -26,8 +27,8 @@ type RipgrepMatch struct {
 	} `json:"data"`
 }
 
-func ParseRipgrepOutput(output string) map[string][]string {
-	results := make(map[string][]string) // ファイルごとにまとめる
+func ParseRipgrepOutput(output string) (map[string][]string, error) {
+	results := make(map[string][]string) // Group results by file
 	lines := strings.Split(output, "\n")
 
 	var currentFile string
@@ -40,6 +41,7 @@ func ParseRipgrepOutput(output string) map[string][]string {
 		var match RipgrepMatch
 		err := json.Unmarshal([]byte(line), &match)
 		if err != nil {
+			log.Printf("⚠️ Failed to parse ripgrep output: %v", err)
 			continue
 		}
 
@@ -47,81 +49,82 @@ func ParseRipgrepOutput(output string) map[string][]string {
 		text := strings.TrimSpace(match.Data.Lines.Text)
 
 		if text == "" {
-			continue // 空白行はスキップ
+			continue // Skip empty lines
 		}
 
-		// `tags:` の行は `🏷️` をつける
+		// Format matched text for better readability
 		if strings.HasPrefix(text, "tags:") {
 			text = fmt.Sprintf("🏷️ %s", text)
 		} else if strings.HasPrefix(text, "- ") {
-			text = fmt.Sprintf("   🔹 %s", text) // `tags:` のリストを見やすく
+			text = fmt.Sprintf("   🔹 %s", text) // List formatting
 		} else if match.Type == "match" {
-			text = fmt.Sprintf("🔍 %s", text) // `match` は強調
+			text = fmt.Sprintf("🔍 %s", text) // Highlight matches
 		} else {
-			text = fmt.Sprintf("   → %s", text) // `context` の行
+			text = fmt.Sprintf("   → %s", text) // Context lines
 		}
 
 		results[currentFile] = append(results[currentFile], text)
 	}
 
-	return results
+	if len(results) == 0 {
+		return nil, fmt.Errorf("no matching notes found")
+	}
+
+	return results, nil
 }
 
 func DisplayResults(results map[string][]string) {
 	if len(results) == 0 {
-		fmt.Println("該当するノートが見つかりませんでした")
+		fmt.Println("❌ No matching notes found.")
 		return
 	}
 
-	fmt.Println("\n🔍 検索結果:\n")
+	fmt.Println("\n🔍 Search Results:\n")
 
 	for file, lines := range results {
-		fmt.Printf("📄 %s\n", file) // ファイル名を一度だけ表示
+		fmt.Printf("📄 %s\n", file) // Display file name once
 
 		for _, line := range lines {
 			formattedLine := strings.TrimSpace(line)
 
-			// メタデータ (不要な情報) をスキップ
+			// Skip unnecessary metadata
 			if strings.HasPrefix(formattedLine, "links:") ||
 				strings.HasPrefix(formattedLine, "created_at:") ||
 				strings.HasPrefix(formattedLine, "updated_at:") {
 				continue
 			}
 
-			// `tags:` の行を `🏷️` で見やすく
+			// Improve readability
 			if strings.HasPrefix(formattedLine, "tags:") {
 				fmt.Println("   ", formattedLine)
 			} else if strings.HasPrefix(formattedLine, "- ") {
-				fmt.Println("     🔹", formattedLine) // `tags:` のリストをアイコン付きで表示
+				fmt.Println("     🔹", formattedLine) // List under tags
 			} else if strings.HasPrefix(formattedLine, "##") {
-				fmt.Println("   📌", formattedLine) // ノートのタイトルを見やすく
+				fmt.Println("   📌", formattedLine) // Highlight note titles
 			} else {
 				fmt.Println("   ", formattedLine)
 			}
 		}
-		fmt.Println() // 各ファイルごとの改行
+		fmt.Println() // Separate files with a newline
 	}
 }
 
 func InteractiveSearch(results map[string][]string) {
 	if len(results) == 0 {
-		fmt.Println("該当するノートが見つかりませんでした")
+		fmt.Println("❌ No matching notes found.")
 		return
 	}
+
 	var fzfInput strings.Builder
 
-	// ファイルごとに `match` と `context` を整理
+	// Prepare fzf input
 	for file, lines := range results {
 		for _, line := range lines {
-			fzfInput.WriteString(fmt.Sprintf("%s:%s\n", file, line)) // `file:line` の形式に統一
+			fzfInput.WriteString(fmt.Sprintf("%s:%s\n", file, line)) // `file:line` format
 		}
 	}
 
-	// デバッグ用
-	// fmt.Println("🔍 fzf に渡すデータ:")
-	// fmt.Println(fzfInput.String())
-
-	// `fzf` の実行
+	// Execute `fzf`
 	fzfCmd := exec.Command("fzf",
 		"--delimiter", ":",
 		"--preview", `file=$(printf "%s" {} | awk -F ":" '{print $1}'); file=$(realpath "$file"); [ -f "$file" ] && bat --color=always --style=header,grid --line-range :100 "$file"`,
@@ -134,9 +137,9 @@ func InteractiveSearch(results map[string][]string) {
 	err := fzfCmd.Run()
 	if err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok && exitError.ExitCode() == 130 {
-			fmt.Println("🔹 fzf がユーザーによって中断されました (Ctrl+C)")
+			log.Println("🔹 fzf was interrupted by the user (Ctrl+C)")
 			return
 		}
-		fmt.Println("❌ fzf の実行に失敗しました:", err)
+		log.Printf("❌ Failed to execute fzf: %v", err)
 	}
 }

@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// ノートを表す構造体
+// Note represents a structured note
 type Note struct {
 	ID       string
 	NoteId   string
@@ -21,7 +21,7 @@ type Note struct {
 	TFIDF    map[string]float64
 }
 
-// MeCab を使って名詞・動詞・形容詞を抽出
+// Extract keywords (nouns, verbs, adjectives) using MeCab
 func ExtractKeywordsMeCab(text string) ([]string, error) {
 	cmd := exec.Command("mecab")
 	var out bytes.Buffer
@@ -29,7 +29,7 @@ func ExtractKeywordsMeCab(text string) ([]string, error) {
 	cmd.Stdin = strings.NewReader(text)
 
 	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("MeCab の実行に失敗しました: %v", err)
+		return nil, fmt.Errorf("❌ Failed to execute MeCab: %w", err)
 	}
 
 	lines := strings.Split(out.String(), "\n")
@@ -49,22 +49,18 @@ func ExtractKeywordsMeCab(text string) ([]string, error) {
 	return keywords, nil
 }
 
-// ✍️ **MeCab を使ってキーフレーズを抽出（単語単位ではなくフレーズ単位）**
+// Extract key phrases using MeCab
 func ExtractKeyPhrasesMeCab(text string) ([]string, error) {
-	// ✅ MeCab を実行
 	cmd := exec.Command("mecab")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stdin = strings.NewReader(text)
 
 	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("❌ MeCab の実行に失敗しました: %v", err)
+		return nil, fmt.Errorf("❌ Failed to execute MeCab: %w", err)
 	}
 
-	// ✅ **形態素解析結果を取得**
 	lines := strings.Split(out.String(), "\n")
-
-	// ✅ **キーフレーズを抽出**
 	var keyPhrases []string
 	var currentPhrase string
 	for _, line := range lines {
@@ -73,12 +69,9 @@ func ExtractKeyPhrasesMeCab(text string) ([]string, error) {
 			continue
 		}
 
-		// MeCab の出力から品詞情報を取得
 		features := strings.Split(parts[1], ",")
 		if len(features) > 0 {
 			wordType := features[0]
-
-			// ✅ **名詞または動詞の連続をフレーズとして抽出**
 			if wordType == "名詞" || wordType == "動詞" {
 				if currentPhrase == "" {
 					currentPhrase = parts[0]
@@ -86,7 +79,6 @@ func ExtractKeyPhrasesMeCab(text string) ([]string, error) {
 					currentPhrase += parts[0]
 				}
 			} else {
-				// **名詞や動詞の連続が終わったら、フレーズとして追加**
 				if currentPhrase != "" {
 					keyPhrases = append(keyPhrases, currentPhrase)
 					currentPhrase = ""
@@ -94,25 +86,20 @@ func ExtractKeyPhrasesMeCab(text string) ([]string, error) {
 			}
 		}
 	}
-
-	// **最後に残ったフレーズを追加**
 	if currentPhrase != "" {
 		keyPhrases = append(keyPhrases, currentPhrase)
 	}
 
-	// ✅ **重複を削除**
-	uniquePhrases := removeDuplicates(keyPhrases)
-
-	return uniquePhrases, nil
+	return removeDuplicates(keyPhrases), nil
 }
 
-// **重複を削除**
+// Remove duplicate phrases
 func removeDuplicates(slice []string) []string {
 	seen := make(map[string]bool)
-	result := []string{}
+	var result []string
 
 	for _, str := range slice {
-		if _, exists := seen[str]; !exists {
+		if !seen[str] {
 			seen[str] = true
 			result = append(result, str)
 		}
@@ -120,12 +107,12 @@ func removeDuplicates(slice []string) []string {
 	return result
 }
 
-// 指定ディレクトリ内のノートを読み込む
+// Load notes from a directory
 func LoadNotesFromDir(noteDir string) ([]Note, error) {
 	var notes []Note
 	files, err := os.ReadDir(noteDir)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("❌ Failed to read directory: %w", err)
 	}
 
 	for _, file := range files {
@@ -133,14 +120,13 @@ func LoadNotesFromDir(noteDir string) ([]Note, error) {
 			filePath := filepath.Join(noteDir, file.Name())
 			content, err := os.ReadFile(filePath)
 			if err != nil {
-				log.Printf("⚠️ ノート読み込みエラー: %v\n", err)
+				log.Printf("⚠️ Failed to read note: %v", err)
 				continue
 			}
 
-			// MeCab でキーワードを抽出
 			keywords, err := ExtractKeywordsMeCab(string(content))
 			if err != nil {
-				log.Printf("⚠️ キーワード抽出エラー: %v\n", err)
+				log.Printf("⚠️ Failed to extract keywords: %v", err)
 				continue
 			}
 
@@ -155,29 +141,26 @@ func LoadNotesFromDir(noteDir string) ([]Note, error) {
 	return notes, nil
 }
 
-// **TF-IDF を計算**
+// Calculate TF-IDF for notes
 func CalculateTFIDF(notes []Note) {
-	// **TF（単語の出現頻度）を計算**
-	tfMap := make(map[string]map[string]float64) // map[ノートID]map[単語]TF値
+	tfMap := make(map[string]map[string]float64)
 	for _, note := range notes {
 		tfMap[note.ID] = CalculateTF(note.Keywords)
 	}
 
-	// **IDF（逆文書頻度）を計算**
 	idfMap := CalculateIDF(notes)
 
-	// **TF-IDF を計算**
 	for i := range notes {
 		tfidf := make(map[string]float64)
 		for word, tf := range tfMap[notes[i].ID] {
 			idf := idfMap[word]
-			tfidf[word] = tf * idf // TF-IDF = TF × IDF
+			tfidf[word] = tf * idf
 		}
 		notes[i].TFIDF = tfidf
 	}
 }
 
-// 🏷 **TF（単語の出現頻度）を計算**
+// Calculate Term Frequency (TF)
 func CalculateTF(words []string) map[string]float64 {
 	tf := make(map[string]float64)
 	totalWords := len(words)
@@ -191,7 +174,7 @@ func CalculateTF(words []string) map[string]float64 {
 	return tf
 }
 
-// 📊 **IDF（逆文書頻度）を計算**
+// Calculate Inverse Document Frequency (IDF)
 func CalculateIDF(notes []Note) map[string]float64 {
 	idf := make(map[string]float64)
 	totalDocs := float64(len(notes))
@@ -207,12 +190,12 @@ func CalculateIDF(notes []Note) map[string]float64 {
 	}
 
 	for word := range idf {
-		idf[word] = math.Log(totalDocs / (1 + idf[word])) // IDF = log(総文書数 / (1 + 出現文書数))
+		idf[word] = math.Log(totalDocs / (1 + idf[word])) // Prevent division by zero
 	}
 	return idf
 }
 
-// 🛠 **コサイン類似度を計算**
+// Compute Cosine Similarity
 func CosineSimilarity(vec1, vec2 map[string]float64) float64 {
 	var dotProduct, normA, normB float64
 	for key, valA := range vec1 {
@@ -230,97 +213,38 @@ func CosineSimilarity(vec1, vec2 map[string]float64) float64 {
 	return dotProduct / (math.Sqrt(normA) * math.Sqrt(normB))
 }
 
-// `from` のノートのキーワードを抽出
-func GetNoteKeywords(note Note) map[string]float64 {
-	tf := CalculateTF(note.Keywords) // TF を計算
-	return tf
-}
-
-// 🔍 **関連ノートを検索**
-func FindRelatedNotes(fromZettel Zettel, zettels []Zettel, threshold float64, tfidfMap map[string]map[string]float64) []Zettel {
-	var relatedNotes []Zettel
-
-	// ✅ `fromZettel` の TF-IDF を取得
-	fromTFIDF, exists := tfidfMap[fromZettel.NoteID]
-	if !exists {
-		fmt.Println("⚠️ `TF-IDF` データが見つかりません:", fromZettel.NoteID)
-		return relatedNotes
-	}
-
-	// ✅ 他のノートとの類似度を計算
-	for _, zettel := range zettels {
-		if zettel.NoteID == fromZettel.NoteID {
-			continue // 🔥 **自分自身はスキップ**
-		}
-
-		// `zettel` の TF-IDF を取得
-		noteTFIDF, exists := tfidfMap[zettel.NoteID]
-		if !exists {
-			continue
-		}
-
-		// コサイン類似度を計算
-		similarity := CosineSimilarity(fromTFIDF, noteTFIDF)
-		if similarity >= threshold {
-			relatedNotes = append(relatedNotes, zettel)
-		}
-	}
-
-	return relatedNotes
-}
-
-// ✅ 各 `Zettel` から `TF-IDF` を計算する関数
+// Compute TF-IDF for notes
 func ComputeTFIDFForZettels(zettels []Zettel) map[string]map[string]float64 {
-	// 🔹 全ノートの単語リストを格納
 	documents := make(map[string][]string)
 
-	// ✅ すべてのノートのテキストを処理
 	for _, zettel := range zettels {
-		// 🔹 ノートの内容を読み込む
 		content, err := os.ReadFile(zettel.NotePath)
 		if err != nil {
-			fmt.Printf("⚠️ ノート読み込みエラー: %s (%v)\n", zettel.NotePath, err)
+			log.Printf("⚠️ Failed to read note: %s (%v)", zettel.NotePath, err)
 			continue
 		}
 
-		// 🔹 MeCab などを使ってキーワードを抽出
 		keywords, err := ExtractKeywordsMeCab(string(content))
 		if err != nil {
-			fmt.Printf("⚠️ キーワード抽出失敗: %s (%v)\n", zettel.NotePath, err)
+			log.Printf("⚠️ Failed to extract keywords: %s (%v)", zettel.NotePath, err)
 			continue
 		}
 
-		// 🔹 `NoteID` をキーに単語リストを保存
 		documents[zettel.NoteID] = keywords
 	}
 
-	// ✅ `TF-IDF` を計算
 	return ComputeTFIDF(documents)
 }
 
-// ✅ `TF-IDF` を計算する関数
+// Compute TF-IDF for a set of documents
 func ComputeTFIDF(documents map[string][]string) map[string]map[string]float64 {
-	// 🔹 各ノートの TF（単語の出現頻度）
 	tfMap := make(map[string]map[string]float64)
-
-	// 🔹 IDF（逆文書頻度）のための単語出現カウント
 	idfCount := make(map[string]int)
 	totalDocs := len(documents)
 
-	// ✅ 各ノートの TF を計算
 	for docID, words := range documents {
-		tf := make(map[string]float64)
-		for _, word := range words {
-			tf[word]++
-		}
+		tfMap[docID] = CalculateTF(words)
 
-		// 🔹 TF を正規化（単語数で割る）
-		for word := range tf {
-			tf[word] /= float64(len(words))
-		}
-		tfMap[docID] = tf
-
-		// 🔹 各単語が何個のドキュメントに出現したかカウント
 		seen := make(map[string]bool)
 		for _, word := range words {
 			if !seen[word] {
@@ -330,21 +254,48 @@ func ComputeTFIDF(documents map[string][]string) map[string]map[string]float64 {
 		}
 	}
 
-	// ✅ IDF（逆文書頻度）を計算
 	idfMap := make(map[string]float64)
 	for word, count := range idfCount {
 		idfMap[word] = math.Log(float64(totalDocs) / (1.0 + float64(count)))
 	}
 
-	// ✅ TF-IDF を計算
-	tfidfMap := make(map[string]map[string]float64)
-	for docID, tf := range tfMap {
-		tfidf := make(map[string]float64)
-		for word, tfValue := range tf {
-			tfidf[word] = tfValue * idfMap[word] // 🔥 TF × IDF
-		}
-		tfidfMap[docID] = tfidf
+	return tfMap
+}
+
+// 🔍 **Find related notes based on TF-IDF similarity**
+func FindRelatedNotes(fromZettel Zettel, zettels []Zettel, threshold float64, tfidfMap map[string]map[string]float64) []Zettel {
+	var relatedNotes []Zettel
+
+	// ✅ Get TF-IDF vector for `fromZettel`
+	fromTFIDF, exists := tfidfMap[fromZettel.NoteID]
+	if !exists {
+		log.Printf("⚠️ No TF-IDF data found for note: %s", fromZettel.NoteID)
+		return relatedNotes
 	}
 
-	return tfidfMap
+	// ✅ Compute similarity with other notes
+	for _, zettel := range zettels {
+		if zettel.NoteID == fromZettel.NoteID {
+			continue // 🔥 Skip itself
+		}
+
+		// Get TF-IDF vector for the current note
+		noteTFIDF, exists := tfidfMap[zettel.NoteID]
+		if !exists {
+			continue
+		}
+
+		// Compute cosine similarity
+		similarity := CosineSimilarity(fromTFIDF, noteTFIDF)
+		if similarity >= threshold {
+			relatedNotes = append(relatedNotes, zettel)
+		}
+	}
+
+	// ✅ Warn if no related notes were found
+	if len(relatedNotes) == 0 {
+		log.Printf("⚠️ No related notes found for: %s", fromZettel.NoteID)
+	}
+
+	return relatedNotes
 }
