@@ -13,7 +13,10 @@ go install github.com/nakachan-ing/Zettelkasten-cli@latest
 ### 2. Downloading from GitHub Releases
 #### Mac/Linux
 ```sh
-wget https://github.com/nakachan-ing/Zettelkasten-cli/releases/latest/download/zk-linux-amd64 -O /usr/local/bin/zk
+wget https://github.com/nakachan-ing/Zettelkasten-cli/releases/download/v2.0.0/zk-mac -O /usr/local/bin/zk
+chmod +x /usr/local/bin/zk
+
+wget https://github.com/nakachan-ing/Zettelkasten-cli/releases/download/v2.0.0/zk-linux -O /usr/local/bin/zk
 chmod +x /usr/local/bin/zk
 ```
 
