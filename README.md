@@ -1,34 +1,34 @@
 # Zettelkasten-cli (zk)
 
-## 概要
-Zettelkasten-cli (zk) は、Zettelkastenメソッドに基づいたノート管理をCLIで行うためのツールです。メモの作成、検索、リンク、タスク管理などを直感的なコマンドで操作できます。
+## Overview
+Zettelkasten-cli (zk) is a command-line tool for managing notes based on the Zettelkasten method. It allows intuitive commands for creating notes, searching, linking, and task management.
 
-## インストール方法
-### 1. `go install` を使用する
-以下のコマンドでインストールできます。
+## Installation
+### 1. Using `go install`
+Install with the following command:
 ```sh
-go install github.com/yourusername/zettelkasten-cli@latest
+go install github.com/nakachan-ing/Zettelkasten-cli@latest
 ```
 
-### 2. GitHub Releases からバイナリをダウンロード
+### 2. Downloading from GitHub Releases
 #### Mac/Linux
 ```sh
-wget https://github.com/yourusername/zettelkasten-cli/releases/latest/download/zk-linux-amd64 -O /usr/local/bin/zk
+wget https://github.com/nakachan-ing/Zettelkasten-cli/releases/latest/download/zk-linux-amd64 -O /usr/local/bin/zk
 chmod +x /usr/local/bin/zk
 ```
 
 #### Windows
-1. [GitHub Releases](https://github.com/yourusername/zettelkasten-cli/releases) から最新の `zk-windows-amd64.exe` をダウンロード
-2. `C:\Program Files\Zettelkasten-cli\zk.exe` などのディレクトリに配置し、環境変数 `PATH` に追加
+1. Download the latest `zk-windows-amd64.exe` from [GitHub Releases](https://github.com/nakachan-ing/Zettelkasten-cli/releases)
+2. Place it in a directory like `C:\Program Files\Zettelkasten-cli\zk.exe` and add it to the `PATH` environment variable
 
-## 必要な依存ツールのインストール
+## Required Dependencies
 ### MeCab
 #### Mac/Linux
 ```sh
 brew install mecab mecab-ipadic
 ```
 #### Windows
-[MeCab公式サイト](https://taku910.github.io/mecab/) からWindows用インストーラをダウンロードし、セットアップ
+Download and install from the [MeCab official site](https://taku910.github.io/mecab/)
 
 ### fzf
 #### Mac/Linux
@@ -36,115 +36,116 @@ brew install mecab mecab-ipadic
 brew install fzf
 ```
 #### Windows
-[公式リポジトリ](https://github.com/junegunn/fzf) からダウンロードし、環境変数 `PATH` に追加
+Download from the [official repository](https://github.com/junegunn/fzf) and add it to the `PATH`
 
-## zk の設定 (`config.yaml`)
-デフォルトの設定ファイルは `~/.config/zettelkasten-cli/config.yaml` に配置されます。
+## zk Configuration (`config.yaml`)
+The default configuration file is located at `~/.config/zettelkasten-cli/config.yaml`.
 ```yaml
-# ノートを保存するディレクトリ
+# Directory for storing notes
 note_dir: "~/Library/Mobile Documents/com~apple~CloudDocs/Zettelkasten"
 
-# 使用するエディタ
+# Default text editor
 editor: "nvim"
 
-# zettel.json:
+# Metadata file
 zettel_json : "~/.config/zettelkasten-cli/zettel.json"
 
-# アーカイブディレクトリ
+# Archive directory
 archive_dir: "~/Library/Mobile Documents/com~apple~CloudDocs/Zettelkasten/archive"
 
-# バックアップ設定
+# Backup settings
 backup:
     enable: true
-    frequency: 5  # 例: 5分ごとにバックアップを作成
-    retention: 7   # 例: 過去7日分のバックアップを保持
+    frequency: 5  # Create a backup every 5 minutes
+    retention: 7   # Keep backups for 7 days
     backup_dir: "~/Library/Mobile Documents/com~apple~CloudDocs/Zettelkasten/.backup"
 
-# ゴミ箱設定
+# Trash settings
 trash:
     frequency: 5
     retention: 30
     trash_dir: "~/.config/zettelkasten-cli/.Trash"
 ```
 
-### 設定項目の説明
-- `zettel.json` : ノートのメタデータを管理するJSONファイル
-- `editor` : 使用するエディタ (vim, nvim, nano などを指定可能)
-- `archive_dir` : アーカイブされたノートの保存ディレクトリ
-- `backup_dir` : バックアップファイルの保存ディレクトリ
-- `trash_dir` : 削除されたノートの保存ディレクトリ（一定期間後に完全削除）
+### Configuration Explanation
+- `zettel.json`: Stores metadata of notes
+- `editor`: Specifies the text editor (vim, nvim, nano, etc.)
+- `archive_dir`: Directory for archived notes
+- `backup_dir`: Directory for backup files
+- `trash_dir`: Directory for deleted notes (permanently deleted after a retention period)
 
-## 実装済み機能とサンプルコマンド
-### ノート作成・管理
+## Implemented Features and Sample Commands
+### Note Creation and Management
 - `zk new` (alias: `n`)
-  - ノートを作成
+  - Create a new note
   ```sh
-  zk new "新しいメモのタイトル"
+  zk new "New Note Title"
   ```
-  - `--type (-t)`: ノートの種類を指定(`fleeting` / `literature` / `permanent` / `index` / `structure`)
+  - `--type (-t)`: Specify the type of note(`fleeting` / `literature` / `permanent` / `index` / `structure`)
   ```sh
-  zk new -t fleeting "参考文献メモ"
+  zk new -t reference "Reference Note"
   ```
-  - `--tag`: タグを追加
+  - `--tag`: Add tags
   ```sh
-  zk new --tag "devops","DevOpsについて"
+  zk new --tag "devops","About DevOps"
   ```
 - `zk show` (alias: `s`)
-  - 指定したノートを表示
+  - Show a specific note
   ```sh
   zk show [id]
   ```
-  - `--meta`: ノートのメタデータを表示
+  - `--meta`: Show metadata
   ```sh
   zk show --meta [id]
   ```
 - `zk list` (alias: `ls`)
-  - すべてのノートを一覧表示
+  - List all notes
   ```sh
   zk list
   ```
-  - `--tag` を使用してタグごとのノートを表示
+  - List notes by tag
   ```sh
   zk list --tag devops
   ```
-- `zk edit` (alias: `e`): ノートをエディタで編集
+- `zk edit` (alias: `e`): Edit a note
   ```sh
   zk edit [id]
   ```
 - `zk search` (alias: `f`)
-  - キーワードで検索
+  - Search by keyword
   ```sh
-  zk search "クラウド"
+  zk search "cloud"
   ```
-  - `--interactive`: 対話的検索
+  - `--interactive`: Interactive search
   ```sh
   zk search --interactive
   ```
 
-### タスク管理
-- `zk task add` (alias: `t a`): タスクを追加
+### Task Management
+- `zk task add` (alias: `t a`): Add a task
   ```sh
-  zk task add "新しいタスク"
+  zk task add "New Task"
   ```
-- `zk task status` (alias: `t st`): タスクのステータスを変更(`Not started` / `In progress` / `Waiting` / `On hold` / `Done`)
+- `zk task status` (alias: `t st`): Change task status(`Not started` / `In progress` / `Waiting` / `On hold` / `Done`)
   ```sh
-  zk task status 1 "In progress"
+  ```sh
+  zk task status 1 doing
   ```
 - `zk task list` (alias: `t ls`)
-  - `--limit`: 表示する件数を制限
+  - `--limit`: Limit the number of displayed tasks
   ```sh
   zk task list --limit 10
   ```
 
-### ノート同期
-- `zk sync` (alias: `sy`): ノートをクラウドと同期
+### Note Synchronization
+- `zk sync` (alias: `sy`): Sync notes with the cloud
   ```sh
   zk sync
   ```
 
-## ライセンス
-このプロジェクトは [MIT License](https://opensource.org/licenses/mit-license.php) のもとで提供されています。
+## License
+This project is provided under the [MIT License](https://opensource.org/licenses/mit-license.php).
 
-## 貢献
-バグ報告や機能追加の提案は [GitHub Issues](https://github.com/nakachan-ing/Zettelkasten-cli/issues) へお願いします。
+## Contributions
+Bug reports and feature requests are welcome at [GitHub Issues](https://github.com/nakachan-ing/Zettelkasten-cli/issues).
 
