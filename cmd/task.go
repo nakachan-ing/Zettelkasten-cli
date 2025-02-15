@@ -324,5 +324,5 @@ func init() {
 	taskCmd.AddCommand(taskListCmd)
 	rootCmd.AddCommand(taskCmd)
 
-	taskStatusCmd.Flags().IntVar(&taskPageSize, "limit", -1, "Set the number of notes to display per page (-1 for all)")
+	taskListCmd.Flags().IntVar(&taskPageSize, "limit", -1, "Set the number of notes to display per page (-1 for all)")
 }
