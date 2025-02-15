@@ -1,11 +1,9 @@
-/*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -20,51 +18,43 @@ var listTypes []string
 var noteTags []string
 var trash bool
 var archive bool
-
-const pageSize = 20
+var pageSize int
 
 // listCmd represents the list command
 var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Use:     "list",
+	Short:   "List notes",
+	Aliases: []string{"ls"},
 	Run: func(cmd *cobra.Command, args []string) {
-
 		config, err := internal.LoadConfig()
 		if err != nil {
-			fmt.Println("1Error:", err)
-			return
+			log.Printf("❌ Error loading config: %v", err)
+			os.Exit(1)
 		}
 
-		err = internal.CleanupBackups(config.Backup.BackupDir, time.Duration(config.Backup.Retention)*24*time.Hour)
-		if err != nil {
-			fmt.Printf("Backup cleanup failed: %v\n", err)
+		// Perform cleanup tasks
+		if err := internal.CleanupBackups(config.Backup.BackupDir, time.Duration(config.Backup.Retention)*24*time.Hour); err != nil {
+			log.Printf("⚠️ Backup cleanup failed: %v", err)
 		}
-		err = internal.CleanupTrash(config.Trash.TrashDir, time.Duration(config.Trash.Retention)*24*time.Hour)
+		if err := internal.CleanupTrash(config.Trash.TrashDir, time.Duration(config.Trash.Retention)*24*time.Hour); err != nil {
+			log.Printf("⚠️ Trash cleanup failed: %v", err)
+		}
+
+		// Load notes from JSON
+		zettels, err := internal.LoadJson(*config)
 		if err != nil {
-			fmt.Printf("Trash cleanup failed: %v\n", err)
+			log.Printf("❌ Error loading notes from JSON: %v", err)
+			os.Exit(1)
 		}
 
 		filteredNotes := []table.Row{}
 
-		zettels, err := internal.LoadJson(*config)
-		if err != nil {
-			fmt.Println("Error:", err)
-		}
-
 		for _, zettel := range zettels {
-
-			// delete フィルター
+			// Apply filters
 			if trash {
 				if !zettel.Deleted {
 					continue
 				}
-				// archive フィルター
 			} else if archive {
 				if !zettel.Archived {
 					continue
@@ -77,30 +67,30 @@ to quickly create a Cobra application.`,
 					continue
 				}
 
-				// --type フィルター
+				// Type filter
 				typeSet := make(map[string]bool)
 				for _, listType := range listTypes {
 					typeSet[strings.ToLower(listType)] = true
 				}
 
-				// --tag フィルター
+				// Tag filter
 				tagSet := make(map[string]bool)
 				for _, tag := range noteTags {
 					tagSet[strings.ToLower(tag)] = true
 				}
 
-				// --type に指定があり、かつノートのタイプがマッチしないならスキップ
+				// If --type is specified but the note type does not match, skip
 				if len(typeSet) > 0 && !typeSet[strings.ToLower(zettel.NoteType)] {
 					continue
 				}
 
-				// --tag フィルター処理
+				// If --tag is specified but no matching tags are found, skip
 				if len(tagSet) > 0 {
 					match := false
 					for _, noteTag := range zettel.Tags {
 						normalizedNoteTag := strings.ToLower(strings.TrimSpace(noteTag))
 						for filterTag := range tagSet {
-							if strings.Contains(normalizedNoteTag, filterTag) { // 部分一致
+							if strings.Contains(normalizedNoteTag, filterTag) { // Partial match
 								match = true
 								break
 							}
@@ -112,13 +102,14 @@ to quickly create a Cobra application.`,
 				}
 			}
 
-			// 🔹 `--tag` がない場合でもここに到達するように修正
+			// Append filtered notes
 			filteredNotes = append(filteredNotes, table.Row{
 				zettel.ID, zettel.Title, zettel.NoteType, zettel.Tags,
 				zettel.CreatedAt, zettel.UpdatedAt, len(zettel.Links),
 			})
 		}
-		// ページネーションの処理
+
+		// Handle case where no notes match
 		if len(filteredNotes) == 0 {
 			fmt.Println("No matching notes found.")
 			return
@@ -130,10 +121,22 @@ to quickly create a Cobra application.`,
 		fmt.Println(strings.Repeat("=", 30))
 		fmt.Printf("Zettelkasten: %v notes shown\n", len(filteredNotes))
 		fmt.Println(strings.Repeat("=", 30))
+
+		// `--limit` がない場合は全件表示
+		if pageSize == -1 {
+			pageSize = len(filteredNotes)
+		}
+
+		// ページネーションのループ
 		for {
-			// ページ範囲を決定
 			start := page * pageSize
 			end := start + pageSize
+
+			// 範囲チェック
+			if start >= len(filteredNotes) {
+				fmt.Println("No more notes to display.")
+				break
+			}
 			if end > len(filteredNotes) {
 				end = len(filteredNotes)
 			}
@@ -141,10 +144,8 @@ to quickly create a Cobra application.`,
 			// テーブル作成
 			t := table.NewWriter()
 			t.SetOutputMirror(os.Stdout)
-			// t.SetStyle(table.StyleRounded)
 			t.SetStyle(table.StyleDouble)
 			t.Style().Options.SeparateRows = false
-			// t.SetStyle(table.StyleColoredBlackOnCyanWhite)
 
 			t.AppendHeader(table.Row{
 				text.FgGreen.Sprintf("ID"), text.FgGreen.Sprintf(text.Bold.Sprintf("Title")),
@@ -152,39 +153,41 @@ to quickly create a Cobra application.`,
 				text.FgGreen.Sprintf("Created"), text.FgGreen.Sprintf("Updated"),
 				text.FgGreen.Sprintf("Links"),
 			})
-			// データを追加（Type によって色を変更）
-			for _, row := range filteredNotes[start:end] {
-				noteType := row[2].(string) // Type 列の値
-				typeColored := noteType     // 初期値はそのまま
 
-				// Type の値に応じて色を変更
+			// フィルタされたノートをテーブルに追加
+			for _, row := range filteredNotes[start:end] {
+				noteType := row[2].(string)
+				typeColored := noteType
+
 				switch noteType {
 				case "permanent":
-					typeColored = text.FgHiBlue.Sprintf(noteType) // 明るい青
+					typeColored = text.FgHiBlue.Sprintf(noteType)
 				case "literature":
-					typeColored = text.FgHiYellow.Sprintf(noteType) // 明るい黄色
+					typeColored = text.FgHiYellow.Sprintf(noteType)
 				case "fleeting":
-					typeColored = noteType // デフォルト
+					typeColored = noteType
 				case "index":
-					typeColored = text.FgHiMagenta.Sprintf(noteType) // 明るいマゼンタ
+					typeColored = text.FgHiMagenta.Sprintf(noteType)
 				case "structure":
-					typeColored = text.FgHiGreen.Sprintf(noteType) // 明るい緑
+					typeColored = text.FgHiGreen.Sprintf(noteType)
 				}
 
-				// 色付きの Type を適用して行を追加
 				t.AppendRow(table.Row{
 					row[0], row[1], typeColored, row[3], row[4], row[5], row[6],
 				})
 			}
+
 			t.Render()
 
-			// 最後のページなら終了
+			if pageSize == len(filteredNotes) {
+				break
+			}
+
 			if end >= len(filteredNotes) {
 				break
 			}
 
-			// 次のページに進むか確認
-			fmt.Print("\nEnterで次のページ (q で終了): ")
+			fmt.Print("\nPress Enter for the next page (q to quit): ")
 			input, _ := reader.ReadString('\n')
 			input = strings.TrimSpace(input)
 
@@ -202,6 +205,7 @@ func init() {
 
 	listCmd.Flags().StringSliceVarP(&listTypes, "type", "t", []string{}, "Specify note type")
 	listCmd.Flags().StringSliceVar(&noteTags, "tag", []string{}, "Specify tags")
-	listCmd.Flags().BoolVar(&trash, "trash", false, "Optional")
-	listCmd.Flags().BoolVar(&archive, "archive", false, "Optional")
+	listCmd.Flags().BoolVar(&trash, "trash", false, "Show deleted notes")
+	listCmd.Flags().BoolVar(&archive, "archive", false, "Show archived notes")
+	listCmd.Flags().IntVar(&pageSize, "limit", -1, "Set the number of notes to display per page (-1 for all)")
 }

@@ -1,6 +1,3 @@
-/*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -19,265 +16,191 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var taskStatus string    // --status の値（例: "todo", "doing", "done"）
-var taskProject string   // --project の値（例: "Zettelkasten_CLI"）
-var taskSortField string // --sort の値（例: "created", "updated", "priority"）
-var taskTags []string    // --tag の値（複数指定可能、例: ["urgent", "review"])
+var taskStatus string
+var taskProject string
+var taskSortField string
+var taskTags []string
+var taskPageSize int
 
 func createNewTask(taskTitle, projectName string, config internal.Config) (string, internal.Zettel, error) {
 	t := time.Now()
-	noteId := fmt.Sprintf("%d%02d%02d%02d%02d%02d",
-		t.Year(), t.Month(), t.Day(),
-		t.Hour(), t.Minute(), t.Second())
-	createdAt := fmt.Sprintf("%d-%02d-%02d %02d:%02d:%02d",
-		t.Year(), t.Month(), t.Day(),
-		t.Hour(), t.Minute(), t.Second())
+	noteId := t.Format("20060102150405")
+	createdAt := t.Format("2006-01-02 15:04:05")
 
-	var tags []string
-	tags = append(tags, (fmt.Sprintf("project:%s", strings.Replace(projectName, " ", "_", -1))))
+	tags := []string{fmt.Sprintf("project:%s", strings.ReplaceAll(projectName, " ", "_"))}
 
-	// 統一フォーマットでフロントマターを作成
 	frontMatter := internal.FrontMatter{
-		ID:         fmt.Sprintf("%v", noteId),
-		Title:      fmt.Sprintf("%v", taskTitle),
+		ID:         noteId,
+		Title:      taskTitle,
 		Type:       "task",
 		Tags:       tags,
 		TaskStatus: "Not started",
-		CreatedAt:  fmt.Sprintf("%v", createdAt),
-		UpdatedAt:  fmt.Sprintf("%v", createdAt),
+		CreatedAt:  createdAt,
+		UpdatedAt:  createdAt,
 	}
 
-	// YAML 形式に変換
 	frontMatterBytes, err := yaml.Marshal(frontMatter)
 	if err != nil {
-		return "", internal.Zettel{}, fmt.Errorf("⚠️ YAML 変換エラー: %v", err)
+		return "", internal.Zettel{}, fmt.Errorf("❌ Failed to convert to YAML: %w", err)
 	}
 
-	// Markdown ファイルの内容を作成
 	content := fmt.Sprintf("---\n%s---\n\n## %s", string(frontMatterBytes), frontMatter.Title)
 
-	// ファイルを作成
 	filePath := fmt.Sprintf("%s/%s.md", config.NoteDir, noteId)
 	err = os.WriteFile(filePath, []byte(content), 0644)
 	if err != nil {
-		return "", internal.Zettel{}, fmt.Errorf("⚠️ ファイル作成エラー: %v", err)
+		return "", internal.Zettel{}, fmt.Errorf("❌ Failed to create file: %w", err)
 	}
 
-	// JSONファイルに書き込み
 	zettel := internal.Zettel{
-		ID:         "",
-		NoteID:     fmt.Sprintf("%v", noteId),
+		NoteID:     noteId,
 		NoteType:   "task",
-		Title:      fmt.Sprintf("%v", taskTitle),
+		Title:      taskTitle,
 		Tags:       tags,
 		TaskStatus: "Not started",
-		CreatedAt:  fmt.Sprintf("%v", createdAt),
-		UpdatedAt:  fmt.Sprintf("%v", createdAt),
+		CreatedAt:  createdAt,
+		UpdatedAt:  createdAt,
 		NotePath:   filePath,
 	}
 
 	err = internal.InsertZettelToJson(zettel, config)
 	if err != nil {
-		return "", internal.Zettel{}, fmt.Errorf("⚠️ JSON書き込みエラー: %v", err)
+		return "", internal.Zettel{}, fmt.Errorf("❌ Failed to write to JSON: %w", err)
 	}
 
-	fmt.Printf("✅ タスク %s を作成しました。\n", filePath)
+	log.Printf("✅ Task created: %s", filePath)
 	return filePath, zettel, nil
-
 }
 
-// taskCmd represents the task command
 var taskCmd = &cobra.Command{
-	Use:   "task",
-	Short: "Manage tasks",
+	Use:     "task",
+	Short:   "Manage tasks",
+	Aliases: []string{"t"},
 }
 
 var taskAddCmd = &cobra.Command{
-	Use:   "add [title]",
-	Short: "Add a note to a project",
+	Use:     "add [title] [project]",
+	Short:   "Add a new task to a project",
+	Args:    cobra.ExactArgs(2),
+	Aliases: []string{"a"},
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("task called")
 		taskTitle := args[0]
 		projectName := args[1]
+
 		config, err := internal.LoadConfig()
 		if err != nil {
-			fmt.Println("Error:", err)
+			log.Printf("❌ Error loading config: %v", err)
 			return
 		}
 
-		err = internal.CleanupBackups(config.Backup.BackupDir, time.Duration(config.Backup.Retention)*24*time.Hour)
-		if err != nil {
-			fmt.Printf("Backup cleanup failed: %v\n", err)
-		}
-		err = internal.CleanupTrash(config.Trash.TrashDir, time.Duration(config.Trash.Retention)*24*time.Hour)
-		if err != nil {
-			fmt.Printf("Trash cleanup failed: %v\n", err)
-		}
 		newTaskStr, _, err := createNewTask(taskTitle, projectName, *config)
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("❌ Failed to create task: %v", err)
+			return
 		}
 
-		fmt.Printf("Opening %q (Title: %q)...\n", newTaskStr, taskTitle)
-
+		log.Printf("Opening %q (Title: %q)...", newTaskStr, taskTitle)
 		time.Sleep(2 * time.Second)
 
 		c := exec.Command(config.Editor, newTaskStr)
 		c.Stdin = os.Stdin
 		c.Stdout = os.Stdout
 		c.Stderr = os.Stderr
-		err = c.Run()
-		if err != nil {
-			log.Fatal(err)
+		if err := c.Run(); err != nil {
+			log.Printf("❌ Failed to open editor: %v", err)
 		}
-
 	},
 }
 
 var taskStatusCmd = &cobra.Command{
-	Use:   "status [id] [status]",
-	Short: "Change task status",
+	Use:     "status [id] [status]",
+	Short:   "Change task status",
+	Aliases: []string{"st"},
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("task called")
 		taskId := args[0]
 		status := args[1]
+
 		config, err := internal.LoadConfig()
 		if err != nil {
-			fmt.Println("Error:", err)
+			log.Printf("❌ Error loading config: %v", err)
 			return
 		}
 
-		err = internal.CleanupBackups(config.Backup.BackupDir, time.Duration(config.Backup.Retention)*24*time.Hour)
-		if err != nil {
-			fmt.Printf("Backup cleanup failed: %v\n", err)
-		}
-		err = internal.CleanupTrash(config.Trash.TrashDir, time.Duration(config.Trash.Retention)*24*time.Hour)
-		if err != nil {
-			fmt.Printf("Trash cleanup failed: %v\n", err)
-		}
 		tasks, err := internal.LoadJson(*config)
 		if err != nil {
-			fmt.Println("Error:", err)
+			log.Printf("❌ Error loading JSON: %v", err)
+			return
 		}
 
+		found := false
 		for i := range tasks {
 			if taskId == tasks[i].ID {
-				task, err := os.ReadFile(tasks[i].NotePath)
-				if err != nil {
-					fmt.Println("Error:", err)
-				}
+				found = true
+				tasks[i].TaskStatus = status
 
-				frontMatter, body, err := internal.ParseFrontMatter(string(task))
-				if err != nil {
-					fmt.Println("5Error:", err)
-					os.Exit(1)
-				}
-
-				frontMatter.TaskStatus = status
-
-				updatedContent := internal.UpdateFrontMatter(&frontMatter, body)
-
-				// ✅ ファイルに書き戻し
-				err = os.WriteFile(tasks[i].NotePath, []byte(updatedContent), 0644)
-				if err != nil {
-					fmt.Println("❌ 書き込みエラー:", err)
+				if err := internal.SaveUpdatedJson(tasks, config); err != nil {
+					log.Printf("❌ Error updating JSON: %v", err)
 					return
 				}
 
-				if err != nil {
-					fmt.Println("Error:", err)
-					return
-				}
-
-				tasks[i].TaskStatus = frontMatter.TaskStatus
-
-				// ✅ `tasks.json` を保存
-				internal.SaveUpdatedJson(tasks, config)
+				log.Printf("✅ Task %s status updated to: %s", taskId, status)
 				break
 			}
 		}
 
+		if !found {
+			log.Printf("⚠️ Task with ID %s not found", taskId)
+		}
 	},
 }
 
 var taskListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List tasks",
+	Use:     "list",
+	Short:   "List tasks",
+	Aliases: []string{"ls"},
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("task called")
+		log.Println("🔍 Fetching task list...")
 
 		config, err := internal.LoadConfig()
 		if err != nil {
-			fmt.Println("Error:", err)
+			log.Printf("❌ Error loading config: %v", err)
 			return
 		}
 
-		err = internal.CleanupBackups(config.Backup.BackupDir, time.Duration(config.Backup.Retention)*24*time.Hour)
-		if err != nil {
-			fmt.Printf("Backup cleanup failed: %v\n", err)
-		}
-		err = internal.CleanupTrash(config.Trash.TrashDir, time.Duration(config.Trash.Retention)*24*time.Hour)
-		if err != nil {
-			fmt.Printf("Trash cleanup failed: %v\n", err)
-		}
 		tasks, err := internal.LoadJson(*config)
 		if err != nil {
-			fmt.Println("Error:", err)
+			log.Printf("❌ Error loading JSON: %v", err)
+			return
 		}
 
 		filteredTasks := []table.Row{}
 
 		for _, task := range tasks {
-
-			// delete フィルター
-			if trash {
-				if !task.Deleted {
-					continue
-				}
-				// archive フィルター
-			} else if archive {
-				if !task.Archived {
-					continue
-				}
-			} else {
-				if task.Deleted {
+			// Apply delete filter
+			if trash && !task.Deleted {
+				continue
+			}
+			// Apply archive filter
+			if archive && !task.Archived {
+				continue
+			}
+			if !trash && !archive {
+				if task.Deleted || task.NoteType != "task" {
 					continue
 				}
 
-				// // --type フィルター
-				// typeSet := make(map[string]bool)
-				// for _, listType := range listTypes {
-				// 	typeSet[strings.ToLower(listType)] = true
-				// }
-
-				// --tag フィルター
-				// tagSet := make(map[string]bool)
-				// for _, tag := range noteTags {
-				// 	tagSet[strings.ToLower(tag)] = true
-				// }
-
-				// // --type に指定があり、かつノートのタイプがマッチしないならスキップ
-				// if len(typeSet) > 0 && !typeSet[strings.ToLower(task.NoteType)] {
-				// 	continue
-				// }
-
-				if task.NoteType != "task" {
-					continue
-				}
-
-				// --status フィルター: 指定されている場合、task.Status と比較
+				// Filter by status
 				if taskStatus != "" && strings.ToLower(task.TaskStatus) != strings.ToLower(taskStatus) {
 					continue
 				}
 
-				// --project フィルター: 指定されている場合、task.Tags 内の "project:" タグと比較する
+				// Filter by project
 				if taskProject != "" {
 					matchProject := false
 					normalizedProject := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(taskProject), " ", "_"))
 					for _, tag := range task.Tags {
 						normalizedTag := strings.ToLower(strings.TrimSpace(tag))
 						if strings.HasPrefix(normalizedTag, "project:") {
-							// "project:" の後ろの文字列を取得し、スペースをアンダースコアに置換する
 							projectName := strings.TrimSpace(normalizedTag[len("project:"):])
 							projectName = strings.ReplaceAll(projectName, " ", "_")
 							if projectName == normalizedProject {
@@ -291,14 +214,12 @@ var taskListCmd = &cobra.Command{
 					}
 				}
 
-				// --tag フィルター処理
+				// Filter by tags
 				if len(taskTags) > 0 {
 					match := false
 					for _, filterTag := range taskTags {
 						for _, t := range task.Tags {
-							normalizedTaskTag := strings.ToLower(strings.TrimSpace(t))
-							normalizedFilterTag := strings.ToLower(strings.TrimSpace(filterTag))
-							if strings.Contains(normalizedTaskTag, normalizedFilterTag) {
+							if strings.Contains(strings.ToLower(strings.TrimSpace(t)), strings.ToLower(strings.TrimSpace(filterTag))) {
 								match = true
 								break
 							}
@@ -308,81 +229,83 @@ var taskListCmd = &cobra.Command{
 						continue
 					}
 				}
-
 			}
 
-			// 🔹 `--tag` がない場合でもここに到達するように修正
+			// Add to filtered list
 			filteredTasks = append(filteredTasks, table.Row{
 				task.ID, task.Title, task.TaskStatus, task.Tags,
 				task.CreatedAt, task.UpdatedAt,
 			})
 		}
-		// ページネーションの処理
+
+		// No tasks found
 		if len(filteredTasks) == 0 {
-			fmt.Println("No matching notes found.")
+			log.Println("⚠️ No matching tasks found.")
 			return
 		}
 
+		// Pagination
 		reader := bufio.NewReader(os.Stdin)
 		page := 0
 
-		fmt.Println(strings.Repeat("=", 30))
-		fmt.Printf("Zettelkasten: %v tasks shown\n", len(filteredTasks))
-		fmt.Println(strings.Repeat("=", 30))
+		log.Printf("📋 Displaying %d tasks\n", len(filteredTasks))
+
+		// `--limit` がない場合は全件表示
+		if pageSize == -1 {
+			pageSize = len(filteredTasks)
+		}
+
 		for {
-			// ページ範囲を決定
 			start := page * pageSize
 			end := start + pageSize
+			// if end > len(filteredTasks) {
+			// 	end = len(filteredTasks)
+			// }
+
+			// 範囲チェック
+			if start >= len(filteredTasks) {
+				fmt.Println("No more notes to display.")
+				break
+			}
 			if end > len(filteredTasks) {
 				end = len(filteredTasks)
 			}
 
-			// テーブル作成
 			t := table.NewWriter()
 			t.SetOutputMirror(os.Stdout)
-			// t.SetStyle(table.StyleRounded)
 			t.SetStyle(table.StyleDouble)
 			t.Style().Options.SeparateRows = false
-			// t.SetStyle(table.StyleColoredBlackOnCyanWhite)
 
-			t.AppendHeader(table.Row{
-				text.FgGreen.Sprintf("ID"), text.FgGreen.Sprintf(text.Bold.Sprintf("Title")),
-				text.FgGreen.Sprintf("Status"), text.FgGreen.Sprintf("Tags"),
-				text.FgGreen.Sprintf("Created"), text.FgGreen.Sprintf("Updated"),
-			})
-			// データを追加（Type によって色を変更）
+			t.AppendHeader(table.Row{"ID", "Title", "Status", "Tags", "Created", "Updated"})
 			for _, row := range filteredTasks[start:end] {
-				status := row[2].(string) // Type 列の値
-				typeColored := noteType   // 初期値はそのまま
+				status := row[2].(string)
+				var statusColored string
 
-				// Type の値に応じて色を変更
 				switch status {
 				case "Not started":
-					typeColored = status // デフォルト
+					statusColored = status
 				case "In progress":
-					typeColored = text.FgHiBlue.Sprintf(status) // 明るい青
+					statusColored = text.FgHiBlue.Sprintf(status)
 				case "Waiting":
-					typeColored = text.FgHiYellow.Sprintf(status) // 明るい黄色
+					statusColored = text.FgHiYellow.Sprintf(status)
 				case "Done":
-					typeColored = text.FgHiMagenta.Sprintf(status) // 明るいマゼンタ
+					statusColored = text.FgHiMagenta.Sprintf(status)
 				case "On hold":
-					typeColored = text.FgHiGreen.Sprintf(status) // 明るい緑
+					statusColored = text.FgHiGreen.Sprintf(status)
+				default:
+					statusColored = status
 				}
 
-				// 色付きの Type を適用して行を追加
-				t.AppendRow(table.Row{
-					row[0], row[1], typeColored, row[3], row[4], row[5],
-				})
+				t.AppendRow(table.Row{row[0], row[1], statusColored, row[3], row[4], row[5]})
 			}
 			t.Render()
 
-			// 最後のページなら終了
-			if end >= len(filteredTasks) {
+			if pageSize == len(filteredTasks) {
 				break
 			}
 
-			// 次のページに進むか確認
-			fmt.Print("\nEnterで次のページ (q で終了): ")
+			// Prompt for next page
+			fmt.Print("\nPress Enter for next page (q to quit): ")
 			input, _ := reader.ReadString('\n')
 			input = strings.TrimSpace(input)
 
@@ -392,7 +315,6 @@ var taskListCmd = &cobra.Command{
 
 			page++
 		}
-
 	},
 }
 
@@ -402,18 +324,5 @@ func init() {
 	taskCmd.AddCommand(taskListCmd)
 	rootCmd.AddCommand(taskCmd)
 
-	taskListCmd.Flags().StringVar(&taskStatus, "status", "", "Specify note type")
-	taskListCmd.Flags().StringVar(&taskProject, "project", "", "Specify tags")
-	taskListCmd.Flags().StringVar(&taskSortField, "sort", "", "Optional")
-	taskListCmd.Flags().StringSliceVar(&taskTags, "tag", []string{}, "Optional")
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// taskCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// taskCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	taskStatusCmd.Flags().IntVar(&taskPageSize, "limit", -1, "Set the number of notes to display per page (-1 for all)")
 }
