@@ -67,14 +67,16 @@ func createNewProject(projectName string, tags []string, config internal.Config)
 }
 
 var projectCmd = &cobra.Command{
-	Use:   "project",
-	Short: "Manage projects",
+	Use:     "project",
+	Short:   "Manage projects",
+	Aliases: []string{"p"},
 }
 
 var projectNewCmd = &cobra.Command{
-	Use:   "new [title]",
-	Short: "Create a new project",
-	Args:  cobra.ExactArgs(1),
+	Use:     "new [title]",
+	Short:   "Create a new project",
+	Args:    cobra.ExactArgs(1),
+	Aliases: []string{"n"},
 	Run: func(cmd *cobra.Command, args []string) {
 		projectName := args[0]
 
@@ -104,9 +106,10 @@ var projectNewCmd = &cobra.Command{
 }
 
 var projectAddCmd = &cobra.Command{
-	Use:   "add [noteid] [project]",
-	Short: "Add a note to a project",
-	Args:  cobra.ExactArgs(2),
+	Use:     "add [noteid] [project]",
+	Short:   "Add a note to a project",
+	Args:    cobra.ExactArgs(2),
+	Aliases: []string{"a"},
 	Run: func(cmd *cobra.Command, args []string) {
 		noteID := args[0]
 		projectName := args[1]
