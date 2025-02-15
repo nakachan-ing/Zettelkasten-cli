@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -22,16 +21,6 @@ type FrontMatter struct {
 	UpdatedAt  string   `yaml:"updated_at"`
 	Archived   bool     `yaml:"archived"`
 	Deleted    bool     `yaml:"deleted"`
-}
-
-// Extract front matter from content
-func ExtractFrontMatter(content string) (string, error) {
-	re := regexp.MustCompile(`(?s)^---\n(.*?)\n---\n`)
-	matches := re.FindStringSubmatch(content)
-	if len(matches) < 2 {
-		return "", fmt.Errorf("❌ Front matter not found")
-	}
-	return matches[1], nil
 }
 
 // Parse front matter from note content

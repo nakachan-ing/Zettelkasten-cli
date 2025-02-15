@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -115,7 +116,7 @@ var newCmd = &cobra.Command{
 		}
 
 		// Create a new note
-		newZettelStr, _, err := createNewNote(title, noteType, tags, *config)
+		newZettelStr, newZettel, err := createNewNote(title, noteType, tags, *config)
 		if err != nil {
 			log.Printf("❌ Failed to create note: %v", err)
 			os.Exit(1)
@@ -133,6 +134,63 @@ var newCmd = &cobra.Command{
 		err = c.Run()
 		if err != nil {
 			log.Printf("❌ Failed to open editor: %v", err)
+			os.Exit(1)
+		}
+
+		// Load JSON data
+		zettels, err := internal.LoadJson(*config)
+		if err != nil {
+			log.Printf("❌ Error loading notes from JSON: %v", err)
+			os.Exit(1)
+		}
+
+		found := false
+		for i := range zettels {
+			if newZettel.NoteID == zettels[i].NoteID {
+				found = true
+
+				// Read updated note content
+				updatedContent, err := os.ReadFile(zettels[i].NotePath)
+				if err != nil {
+					log.Printf("❌ Failed to read updated note file: %v", err)
+					os.Exit(1)
+				}
+
+				// Parse front matter
+				frontMatter, _, err := internal.ParseFrontMatter(string(updatedContent))
+				if err != nil {
+					log.Printf("❌ Error parsing front matter: %v", err)
+					os.Exit(1)
+				}
+
+				// Update note metadata
+				zettels[i].Title = frontMatter.Title
+				zettels[i].NoteType = frontMatter.Type
+				zettels[i].Tags = frontMatter.Tags
+				zettels[i].Links = frontMatter.Links
+				zettels[i].TaskStatus = frontMatter.TaskStatus
+				zettels[i].UpdatedAt = frontMatter.UpdatedAt
+
+				// Convert to JSON
+				updatedJson, err := json.MarshalIndent(zettels, "", "  ")
+				if err != nil {
+					log.Printf("❌ Failed to convert updated notes to JSON: %v", err)
+					os.Exit(1)
+				}
+
+				// Write back to `zettel.json`
+				if err := os.WriteFile(config.ZettelJson, updatedJson, 0644); err != nil {
+					log.Printf("❌ Failed to write updated notes to JSON file: %v", err)
+					os.Exit(1)
+				}
+
+				fmt.Println("✅ Note metadata updated successfully:", config.ZettelJson)
+				break
+			}
+		}
+
+		if !found {
+			log.Printf("❌ Note with ID %s not found", newZettel.NoteID)
 			os.Exit(1)
 		}
 	},

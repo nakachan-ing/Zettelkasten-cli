@@ -207,5 +207,5 @@ func init() {
 	listCmd.Flags().StringSliceVar(&noteTags, "tag", []string{}, "Specify tags")
 	listCmd.Flags().BoolVar(&trash, "trash", false, "Show deleted notes")
 	listCmd.Flags().BoolVar(&archive, "archive", false, "Show archived notes")
-	listCmd.Flags().IntVar(&pageSize, "limit", -1, "Set the number of notes to display per page (-1 for all)")
+	listCmd.Flags().IntVar(&pageSize, "limit", 20, "Set the number of notes to display per page (-1 for all)")
 }

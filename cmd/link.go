@@ -298,6 +298,21 @@ func runManualLink(sourceId, destinationId string) error {
 		return fmt.Errorf("❌ Failed to parse front matter: %w", err)
 	}
 
+	keyPhrases, err := internal.ExtractKeyPhrasesMeCab(string(body))
+	if err != nil {
+		return fmt.Errorf("❌ Failed to extract key phrases: %v", err)
+	}
+
+	updatedMarkdown, err := insertLinkInContext(filePath, destinationZettel.Title, destinationZettel.NoteID+".md", keyPhrases)
+	if err != nil {
+		return fmt.Errorf("❌ Failed to insert link into markdown: %v", err)
+	}
+
+	frontMatter, body, err = internal.ParseFrontMatter(updatedMarkdown)
+	if err != nil {
+		return fmt.Errorf("❌ Failed to parse front matter: %v", err)
+	}
+
 	updatedFrontMatter := addLinkToFrontMatter(&frontMatter, []string{destinationZettel.NoteID})
 	finalMarkdown := internal.UpdateFrontMatter(updatedFrontMatter, body)
 
