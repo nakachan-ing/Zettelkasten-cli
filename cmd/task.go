@@ -304,6 +304,10 @@ var taskListCmd = &cobra.Command{
 				break
 			}
 
+			if end >= len(filteredTasks) {
+				break
+			}
+
 			// Prompt for next page
 			fmt.Print("\nPress Enter for next page (q to quit): ")
 			input, _ := reader.ReadString('\n')
