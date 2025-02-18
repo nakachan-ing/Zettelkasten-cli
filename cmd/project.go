@@ -21,9 +21,7 @@ func createNewProject(projectName string, tags []string, config internal.Config)
 	noteId := fmt.Sprintf("%d%02d%02d%02d%02d%02d",
 		t.Year(), t.Month(), t.Day(),
 		t.Hour(), t.Minute(), t.Second())
-	createdAt := fmt.Sprintf("%d-%02d-%02d %02d:%02d:%02d",
-		t.Year(), t.Month(), t.Day(),
-		t.Hour(), t.Minute(), t.Second())
+	createdAt := t.Format("2006-01-02 15:04:05")
 
 	frontMatter := internal.FrontMatter{
 		ID:        noteId,
